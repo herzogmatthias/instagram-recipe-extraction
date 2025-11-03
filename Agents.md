@@ -24,9 +24,9 @@ npm test
 
 ## Tech Stack
 
-- **Framework**: Next.Js latest
+- **Framework**: Next.Js v16.* (https://nextjs.org/docs)
 - **Language**: Typescript
-- **Styling**: Tailwind CSS latest
+- **Styling**: Tailwind CSS v4.1 (https://tailwindcss.com/docs/installation/using-vite)
 - **Database**: Cloud Firestore (Before DB implementation use Local JSON Files)
 - **AI Layer**: Google Gen AI SDK (https://googleapis.github.io/js-genai/release_docs/index.html) 
 
