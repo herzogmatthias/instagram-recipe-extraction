@@ -28,6 +28,7 @@ npm test
 - **Language**: Typescript
 - **Styling**: Tailwind CSS latest
 - **Database**: Cloud Firestore (Before DB implementation use Local JSON Files)
+- **AI Layer**: Google Gen AI SDK (https://googleapis.github.io/js-genai/release_docs/index.html) 
 
 ## Project Structure
 
