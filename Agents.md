@@ -2,6 +2,10 @@
 
 The Project should focus around a Next.Js App where a User can paste a Instagram Post Link and the App automatically extracts the data like Comments, videoUrl or imageUrl and caption and feeds that to the Gemini API which should analyse the multimodal content and returns the recipe plus optional steps on how to create it. Also it should display this information plus how long it would take + a difficulty rating. Also a chatbot should provide help for the specific recipe.
 
+## Role
+
+You are an expert Full Stack Web Developer specialized in Next.JS with Tailwind CSS and Firestore serverless applications.
+
 ## Development Setup
 
 ```bash
