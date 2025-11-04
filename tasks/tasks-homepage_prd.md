@@ -31,7 +31,7 @@
 - Unit tests should be placed alongside the code files they are testing
 - Use `npm test` to run all tests
 - Initial implementation uses JSON files from `data/` directory; Firestore integration deferred
-- Follow shadcn/ui component patterns for consistent styling
+- Follow shadcn/ui component patterns for consistent styling - if components are missing, search shadcn docs and install as needed; else create custom components following design standards
 
 ---
 
@@ -56,30 +56,30 @@
   - [x] 2.6 Write unit tests for `recipeHelpers.ts` covering edge cases (missing fields, null values)
   - [x] 2.7 Create mock data factory for testing components
 
-- [ ] **3.0 Core UI Components**
+- [x] **3.0 Core UI Components**
 
-  - [ ] 3.1 Build `StatusChip` component with color coding for all statuses (queued, scraping, downloading_media, uploading_media, extracting, ready, failed)
-  - [ ] 3.2 Add accessibility labels to `StatusChip` (readable text, not color-only)
-  - [ ] 3.3 Build `RecipeCard` component with portrait 4:5 aspect ratio container
-  - [ ] 3.4 Implement media section with `displayUrl`, object-cover, and blurred shimmer placeholder
-  - [ ] 3.5 Add overlay elements: status chip (top-left) and title with gradient (bottom)
-  - [ ] 3.6 Implement body section with meta pills (time, difficulty, cuisine, macros as kcal • P/F/C)
-  - [ ] 3.7 Add tag display (up to 3 chips, then +N indicator)
-  - [ ] 3.8 Create footer with action icons (Open, Copy Ingredients, Export JSON, kebab menu)
-  - [ ] 3.9 Add hover states (lift effect, media scale +5%, shadow transition)
-  - [ ] 3.10 Implement card states (queued with placeholder, processing with progress bar, ready, failed with warning border)
-  - [ ] 3.11 Make entire card clickable with role="button" and focus-visible ring
-  - [ ] 3.12 Ensure 4.5:1 contrast ratio for all text overlays
-  - [ ] 3.13 Write unit tests for `RecipeCard` covering all visual states and interactions
+  - [x] 3.1 Build `StatusChip` component with color coding for all statuses (queued, scraping, downloading_media, uploading_media, extracting, ready, failed)
+  - [x] 3.2 Add accessibility labels to `StatusChip` (readable text, not color-only)
+  - [x] 3.3 Build `RecipeCard` component with portrait 4:5 aspect ratio container
+  - [x] 3.4 Implement media section with `displayUrl`, object-cover, and blurred shimmer placeholder
+  - [x] 3.5 Add overlay elements: status chip (top-left) and title with gradient (bottom)
+  - [x] 3.6 Implement body section with meta pills (time, difficulty, cuisine, macros as kcal • P/F/C)
+  - [x] 3.7 Add tag display (up to 3 chips, then +N indicator)
+  - [x] 3.8 Create footer with action icons (Open, Copy Ingredients, Export JSON, kebab menu)
+  - [x] 3.9 Add hover states (lift effect, media scale +5%, shadow transition)
+  - [x] 3.10 Implement card states (queued with placeholder, processing with progress bar, ready, failed with warning border)
+  - [x] 3.11 Make entire card clickable with role="button" and focus-visible ring
+  - [x] 3.12 Ensure 4.5:1 contrast ratio for all text overlays
+  - [x] 3.13 Write unit tests for `RecipeCard` covering all visual states and interactions
 
 - [ ] **4.0 Navigation & Layout**
 
-  - [ ] 4.1 Build `Navbar` component with fixed positioning (~64px height)
-  - [ ] 4.2 Add logo, navigation items (Library, Processing, Settings)
-  - [ ] 4.3 Implement global search input with debouncing
-  - [ ] 4.4 Add theme toggle button (light/dark mode)
-  - [ ] 4.5 Ensure navbar stays accessible with proper z-index and spacing
-  - [ ] 4.6 Write unit tests for `Navbar` interactions (search input, navigation)
+  - [x] 4.1 Build `Navbar` component with fixed positioning (~64px height)
+  - [x] 4.2 Add logo, navigation items (Library, Processing, Settings)
+  - [x] 4.3 Implement global search input with debouncing
+  - [x] 4.4 Add theme toggle button (light/dark mode)
+  - [x] 4.5 Ensure navbar stays accessible with proper z-index and spacing
+  - [x] 4.6 Write unit tests for `Navbar` interactions (search input, navigation)
   - [ ] 4.7 Build `FilterBar` component with status filter dropdown
   - [ ] 4.8 Add tag filter multi-select
   - [ ] 4.9 Implement free-text filter for title/caption search

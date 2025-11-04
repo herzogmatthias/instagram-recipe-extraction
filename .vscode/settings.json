@@ -1,0 +1,36 @@
+{
+  "chat.mcp.serverSampling": {
+    "instagram-recipe-extraction/.vscode/mcp.json: context7": {
+      "allowedModels": [
+        "copilot/gpt-5-mini",
+        "copilot/auto",
+        "copilot/claude-haiku-4.5",
+        "copilot/claude-3.5-sonnet",
+        "copilot/claude-sonnet-4",
+        "copilot/claude-sonnet-4.5",
+        "copilot/gemini-2.5-pro",
+        "copilot/gpt-4.1",
+        "copilot/gpt-4o",
+        "copilot/gpt-5",
+        "copilot/gpt-5-codex",
+        "copilot/grok-code-fast-1"
+      ]
+    },
+    "instagram-recipe-extraction/.vscode/mcp.json: shadcn": {
+      "allowedModels": [
+        "copilot/gpt-5-mini",
+        "copilot/auto",
+        "copilot/claude-haiku-4.5",
+        "copilot/claude-3.5-sonnet",
+        "copilot/claude-sonnet-4",
+        "copilot/claude-sonnet-4.5",
+        "copilot/gemini-2.5-pro",
+        "copilot/gpt-4.1",
+        "copilot/gpt-4o",
+        "copilot/gpt-5",
+        "copilot/gpt-5-codex",
+        "copilot/grok-code-fast-1"
+      ]
+    }
+  }
+}
