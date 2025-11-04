@@ -4,7 +4,7 @@ The Project should focus around a Next.Js App where a User can paste a Instagram
 
 ## Role
 
-You are an expert Full Stack Web Developer specialized in Next.JS with Tailwind CSS and Firestore serverless applications.
+You are an expert Full Stack Web Developer specialized in Next.JS with Shadcn UI and Firestore serverless applications.
 
 ## Development Setup
 
@@ -24,11 +24,11 @@ npm test
 
 ## Tech Stack
 
-- **Framework**: Next.Js v16.* (https://nextjs.org/docs)
+- **Framework**: Next.Js v16.\* (https://nextjs.org/docs)
 - **Language**: Typescript
-- **Styling**: Tailwind CSS v4.1 (https://tailwindcss.com/docs/installation/using-vite)
+- **Styling**: shadcn@latest (https://ui.shadcn.com/docs/installation)
 - **Database**: Cloud Firestore (Before DB implementation use Local JSON Files)
-- **AI Layer**: Google Gen AI SDK (https://googleapis.github.io/js-genai/release_docs/index.html) 
+- **AI Layer**: Google Gen AI SDK (https://googleapis.github.io/js-genai/release_docs/index.html)
 
 ## Project Structure
 
@@ -44,18 +44,21 @@ src/
 ## Code Standards
 
 ### General Rules
+
 - Prefer TypeScript over JavaScript
 - Use functional components with hooks
 - Follow ESLint configuration
 - Write tests for new features
 
 ### Naming Conventions
+
 - Components: PascalCase (UserProfile.tsx)
 - Utilities: camelCase (formatDate.ts)
 - Constants: SCREAMING_SNAKE_CASE
 - Types/Interfaces: PascalCase with suffix (UserType)
 
 ### File Organization
+
 - Colocate tests with source files
 - Group related components in folders
 - Use index.ts for clean imports
@@ -63,13 +66,16 @@ src/
 ## Important Patterns
 
 ### API Calls
+
 Always use the API client from lib/api:
+
 ```typescript
-import { apiClient } from '@/lib/api'
-const data = await apiClient.get('/endpoint')
+import { apiClient } from "@/lib/api";
+const data = await apiClient.get("/endpoint");
 ```
 
 ### State Management
+
 - Use React Context for global state
 - Prefer local state when possible
 - Consider Zustand for complex state
