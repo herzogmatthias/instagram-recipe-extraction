@@ -41,6 +41,19 @@ src/
 └── types/        # TypeScript type definitions
 ```
 
+## Design Standards
+
+- Do not overload the User with functionality - keep it clean and simple.
+- **Color Palette**
+  | Role | Color | Notes |
+  | ---------------- | --------- | ------------------- |
+  | Background | `#FDFDFB` | creamy neutral |
+  | Surface | `#FFFFFF` | white cards |
+  | Primary Accent | `#D6E2C3` | light olive/sage |
+  | Secondary Accent | `#F3C6A5` | soft coral/peach |
+  | Text | `#333333` | readable gray-black |
+  | Border | `#EAEAEA` | light neutral line |
+
 ## Code Standards
 
 ### General Rules
