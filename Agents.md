@@ -126,5 +126,5 @@ const data = await apiClient.get("/endpoint");
 
 ## Additional Resources
 
-- for testing use the json files under data
+- for testing use the json files under data: there is the instagram post data and recipe data. they are connected via id and ref_id.
 - later we will use a scraper for getting the data: https://apify.com/apify/instagram-post-scraper please keep this change in mind
