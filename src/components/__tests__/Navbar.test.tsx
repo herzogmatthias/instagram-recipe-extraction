@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import Navbar from "../Navbar";
@@ -36,8 +36,20 @@ jest.mock("next-themes", () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-const renderWithTheme = (component: React.ReactElement) => {
-  return render(component);
+const renderNavbar = (
+  props: Partial<React.ComponentProps<typeof Navbar>> = {}
+) => {
+  const mergedProps = {
+    processingItems: [],
+    processingOpen: false,
+    onProcessingOpenChange: jest.fn(),
+    ...props,
+  } as React.ComponentProps<typeof Navbar>;
+
+  return {
+    onProcessingOpenChange: mergedProps.onProcessingOpenChange,
+    ...render(<Navbar {...mergedProps} />),
+  };
 };
 
 describe("Navbar Component", () => {
@@ -47,24 +59,24 @@ describe("Navbar Component", () => {
 
   describe("4.1 - Component Rendering and Structure", () => {
     it("should render navbar with fixed positioning", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(nav).toHaveClass("fixed", "top-0", "left-0", "right-0", "z-50");
     });
 
     it("should have correct height of 64px", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(nav).toHaveClass("h-16");
     });
 
     it('should render logo with text "RecipeGram"', () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       expect(screen.getByText("RecipeGram")).toBeInTheDocument();
     });
 
     it("should have border-b and border-border classes for border styling", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(nav).toHaveClass("border-b", "border-border");
     });
@@ -72,127 +84,94 @@ describe("Navbar Component", () => {
 
   describe("4.2 - Navigation Items", () => {
     it("should render all three navigation items on larger screens", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       expect(screen.getByTestId("nav-library")).toBeInTheDocument();
       expect(screen.getByTestId("nav-processing")).toBeInTheDocument();
       expect(screen.getByTestId("nav-settings")).toBeInTheDocument();
     });
 
     it("should display navigation item labels", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       expect(screen.getByText("Library")).toBeInTheDocument();
       expect(screen.getByText("Processing")).toBeInTheDocument();
       expect(screen.getByText("Settings")).toBeInTheDocument();
     });
 
     it("should have proper icons for navigation items", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const navItems = screen.getAllByRole("link");
       // At least logo + 3 navigation links
       expect(navItems.length).toBeGreaterThanOrEqual(3);
     });
 
-    it("should navigate to correct routes", () => {
-      renderWithTheme(<Navbar />);
+    it("should navigate to correct routes for link items", () => {
+      renderNavbar();
       expect(screen.getByTestId("nav-library")).toHaveAttribute("href", "/");
-      expect(screen.getByTestId("nav-processing")).toHaveAttribute(
-        "href",
-        "/processing"
-      );
       expect(screen.getByTestId("nav-settings")).toHaveAttribute(
         "href",
         "/settings"
       );
     });
+
+    it("should invoke onProcessingOpenChange when processing trigger clicked", async () => {
+      const onProcessingOpenChange = jest.fn();
+      renderNavbar({ onProcessingOpenChange });
+
+      await userEvent.click(screen.getByTestId("nav-processing"));
+      expect(onProcessingOpenChange).toHaveBeenCalledWith(true);
+    });
   });
 
-  describe("4.3 - Search Functionality with Debouncing", () => {
-    it("should render search input with placeholder", () => {
-      renderWithTheme(<Navbar searchPlaceholder="Search recipes..." />);
-      const searchInput = screen.getByTestId("search-input");
-      expect(searchInput).toBeInTheDocument();
-    });
+  describe("4.3 - Mobile Navigation", () => {
+    it("should render overflow menu for navigation on mobile", async () => {
+      renderNavbar();
 
-    it("should use custom placeholder when provided", () => {
-      const customPlaceholder = "Custom search text...";
-      renderWithTheme(<Navbar searchPlaceholder={customPlaceholder} />);
-      expect(
-        screen.getByPlaceholderText(customPlaceholder)
-      ).toBeInTheDocument();
-    });
+      await userEvent.click(screen.getByTestId("nav-overflow-mobile"));
 
-    it("should call onSearch with debounce when user types", async () => {
-      const mockOnSearch = jest.fn();
-      renderWithTheme(<Navbar onSearch={mockOnSearch} />);
-
-      const searchInput = screen.getByTestId("search-input");
-      await userEvent.type(searchInput, "pasta");
-
-      // Should not be called immediately due to debounce
-      expect(mockOnSearch).not.toHaveBeenCalled();
-
-      // Wait for debounce (300ms)
-      await waitFor(
-        () => {
-          expect(mockOnSearch).toHaveBeenCalledWith("pasta");
-        },
-        { timeout: 500 }
+      await waitFor(() =>
+        expect(screen.getByTestId("nav-library-mobile")).toBeInTheDocument()
       );
+      expect(screen.getByTestId("nav-processing-mobile")).toBeInTheDocument();
+      expect(screen.getByTestId("nav-settings-mobile")).toBeInTheDocument();
     });
 
-    it("should debounce multiple rapid searches", async () => {
-      const mockOnSearch = jest.fn();
-      renderWithTheme(<Navbar onSearch={mockOnSearch} />);
+    it("should invoke onProcessingOpenChange from mobile menu", async () => {
+      const onProcessingOpenChange = jest.fn();
+      renderNavbar({ onProcessingOpenChange });
 
-      const searchInput = screen.getByTestId("search-input");
-      await userEvent.type(searchInput, "pasta");
-
-      // Should not be called during typing
-      expect(mockOnSearch).not.toHaveBeenCalled();
-
-      // Wait for debounce to complete
-      await waitFor(
-        () => {
-          // Should only be called once with the final value
-          expect(mockOnSearch).toHaveBeenCalledTimes(1);
-          expect(mockOnSearch).toHaveBeenCalledWith("pasta");
-        },
-        { timeout: 500 }
+      await userEvent.click(screen.getByTestId("nav-overflow-mobile"));
+      await waitFor(() =>
+        expect(screen.getByTestId("nav-processing-mobile")).toBeInTheDocument()
       );
+
+      await userEvent.click(screen.getByTestId("nav-processing-mobile"));
+      expect(onProcessingOpenChange).toHaveBeenCalledWith(true);
     });
 
-    it("should update input value as user types", async () => {
-      renderWithTheme(<Navbar />);
-      const searchInput = screen.getByTestId(
-        "search-input"
-      ) as HTMLInputElement;
+    it("should invoke onOpenFilters when mobile filter icon is clicked", async () => {
+      const onOpenFilters = jest.fn();
+      renderNavbar({ onOpenFilters });
 
-      await userEvent.type(searchInput, "test");
-      expect(searchInput.value).toBe("test");
-    });
-
-    it("should have aria-label for search input accessibility", () => {
-      renderWithTheme(<Navbar />);
-      const searchInput = screen.getByLabelText(/search recipes/i);
-      expect(searchInput).toBeInTheDocument();
+      await userEvent.click(screen.getByTestId("mobile-filter-toggle"));
+      expect(onOpenFilters).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("4.4 - Theme Toggle Functionality", () => {
     it("should render theme toggle button", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const themeToggle = screen.getByTestId("theme-toggle");
       expect(themeToggle).toBeInTheDocument();
     });
 
     it("should have proper aria-label for theme toggle", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const themeToggle = screen.getByLabelText(/switch to (light|dark) mode/i);
       expect(themeToggle).toBeInTheDocument();
     });
 
     it("should render Moon icon in light mode by default", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const themeToggle = screen.getByLabelText(/switch to dark mode/i);
       expect(themeToggle).toBeInTheDocument();
     });
@@ -200,26 +179,26 @@ describe("Navbar Component", () => {
 
   describe("4.5 - Accessibility Features", () => {
     it("should have proper z-index for fixed positioning", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(nav).toHaveClass("z-50");
     });
 
     it("should have aria-label on navigation element", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(nav).toHaveAttribute("aria-label", "Main navigation");
     });
 
     it("search input should be keyboard navigable", async () => {
-      renderWithTheme(<Navbar />);
-      const searchInput = screen.getByTestId("search-input");
-      searchInput.focus();
-      expect(searchInput).toHaveFocus();
+      renderNavbar();
+      const themeToggle = screen.getByTestId("theme-toggle");
+      themeToggle.focus();
+      expect(themeToggle).toHaveFocus();
     });
 
     it("theme toggle button should have accessible label", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const themeToggle = screen.getByTestId("theme-toggle");
       expect(themeToggle).toHaveAttribute("aria-label");
     });
@@ -227,46 +206,47 @@ describe("Navbar Component", () => {
 
   describe("4.6 - Responsive Design", () => {
     it("should have responsive container classes", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
-      const innerDiv = nav.querySelector(".container");
+      const innerDiv = Array.from(nav.querySelectorAll("div")).find((node) =>
+        node.className.includes("max-w-[1600px]")
+      );
       expect(innerDiv).toBeInTheDocument();
     });
 
     it("should hide navigation items on small screens", () => {
-      renderWithTheme(<Navbar />);
-      const navContainer = screen.getByTestId("nav-library").parentElement;
-      expect(navContainer).toHaveClass("hidden", "md:flex");
+      renderNavbar();
+      expect(screen.getByTestId("nav-library")).toHaveClass(
+        "hidden",
+        "md:inline-flex"
+      );
+      expect(screen.getByTestId("nav-settings")).toHaveClass(
+        "hidden",
+        "md:inline-flex"
+      );
     });
 
     it("should always show theme toggle button on all screen sizes", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const themeToggle = screen.getByTestId("theme-toggle");
       expect(themeToggle).not.toHaveClass("hidden");
     });
   });
 
   describe("Edge Cases and Hydration", () => {
-    it("should handle missing onSearch prop gracefully", async () => {
-      renderWithTheme(<Navbar />);
-      const searchInput = screen.getByTestId("search-input");
-      await userEvent.type(searchInput, "test");
-      expect(searchInput).toBeInTheDocument();
-    });
-
     it("should cleanup debounce timer on unmount", () => {
-      const { unmount } = renderWithTheme(<Navbar />);
+      const { unmount } = renderNavbar();
       expect(() => unmount()).not.toThrow();
     });
 
     it("should have proper background styling with backdrop blur", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const nav = screen.getByRole("navigation", { name: /main navigation/i });
       expect(nav).toHaveClass("backdrop-blur");
     });
 
     it("should have proper text color on logo link", () => {
-      renderWithTheme(<Navbar />);
+      renderNavbar();
       const logo = screen.getByText("RecipeGram").closest("a");
       expect(logo).toHaveClass("text-foreground");
     });

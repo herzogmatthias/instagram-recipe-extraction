@@ -72,7 +72,7 @@
   - [x] 3.12 Ensure 4.5:1 contrast ratio for all text overlays
   - [x] 3.13 Write unit tests for `RecipeCard` covering all visual states and interactions
 
-- [ ] **4.0 Navigation & Layout**
+- [x] **4.0 Navigation & Layout**
 
   - [x] 4.1 Build `Navbar` component with fixed positioning (~64px height)
   - [x] 4.2 Add logo, navigation items (Library, Processing, Settings)
@@ -80,46 +80,47 @@
   - [x] 4.4 Add theme toggle button (light/dark mode)
   - [x] 4.5 Ensure navbar stays accessible with proper z-index and spacing
   - [x] 4.6 Write unit tests for `Navbar` interactions (search input, navigation)
-  - [ ] 4.7 Build `FilterBar` component with status filter dropdown
-  - [ ] 4.8 Add tag filter multi-select
-  - [ ] 4.9 Implement free-text filter for title/caption search
-  - [ ] 4.10 Add clear filters button
-  - [ ] 4.11 Write unit tests for `FilterBar` covering filter combinations
+  - [x] 4.7 Build `FilterBar` component with status filter dropdown
+  - [x] 4.8 Add tag filter multi-select
+  - [x] 4.9 Implement free-text filter for title/caption search
+  - [x] 4.10 Add clear filters button
+  - [x] 4.11 Write unit tests for `FilterBar` covering filter combinations
 
-- [ ] **5.0 Homepage Integration & Grid Layout**
+- [x] **5.0 Homepage Integration & Grid Layout**
 
-  - [ ] 5.1 Update `src/app/page.tsx` to use `useRecipeData` hook
-  - [ ] 5.2 Implement responsive card grid (3-4 columns desktop, 1-2 mobile)
-  - [ ] 5.3 Add FAB or primary button for "Add Link" action
-  - [ ] 5.4 Integrate `FilterBar` above grid
-  - [ ] 5.5 Connect filter state to card display logic
-  - [ ] 5.6 Implement scroll position preservation during filtering
-  - [ ] 5.7 Add empty state with friendly prompt and "Add link" CTA
-  - [ ] 5.8 Ensure cards never appear empty (always show cover or placeholder)
-  - [ ] 5.9 Test grid responsiveness across breakpoints
-  - [ ] 5.10 Write integration tests for homepage with multiple recipes
+  - [x] 5.1 Update `src/app/page.tsx` to use `useRecipeData` hook
+  - [x] 5.2 Implement responsive card grid (3-4 columns desktop, 1-2 mobile)
+  - [x] 5.3 Add FAB or primary button for "Add Link" action
+  - [x] 5.4 Integrate `FilterBar` above grid
+  - [x] 5.5 Connect filter state to card display logic
+  - [x] 5.6 Implement scroll position preservation during filtering
+  - [x] 5.7 Add empty state with friendly prompt and "Add link" CTA
+  - [x] 5.8 Ensure cards never appear empty (always show cover or placeholder)
+  - [x] 5.9 Test grid responsiveness across breakpoints
+  - [x] 5.10 Write integration tests for homepage with multiple recipes
 
-- [ ] **6.0 Add Link Functionality**
+- [x] **6.0 Add Link Functionality**
 
-  - [ ] 6.1 Build `AddLinkModal` component using shadcn Dialog
-  - [ ] 6.2 Add URL input field with Instagram URL validation
-  - [ ] 6.3 Show validation errors inline (invalid URL format, non-Instagram URL)
-  - [ ] 6.4 Implement optimistic UI update (create record with status=queued)
-  - [ ] 6.5 Add new card to top of grid on submission
-  - [ ] 6.6 Close modal after successful submission
-  - [ ] 6.7 Handle submission errors gracefully
-  - [ ] 6.8 Write unit tests for `AddLinkModal` covering validation and submission
+  - [x] 6.1 Build `AddLinkModal` component using shadcn Dialog
+  - [x] 6.2 Add URL input field with Instagram URL validation
+  - [x] 6.3 Show validation errors inline (invalid URL format, non-Instagram URL)
+  - [x] 6.4 Implement optimistic UI update (create record with status=queued)
+  - [x] 6.5 Add new card to top of grid on submission
+  - [x] 6.6 Close modal after successful submission
+  - [x] 6.7 Handle submission errors gracefully
+  - [x] 6.8 Write unit tests for `AddLinkModal` covering validation and submission
 
 - [ ] **7.0 Status Polling & Live Updates**
 
   - [ ] 7.1 Create `useRecipePolling` hook for non-terminal status recipes
   - [ ] 7.2 Implement polling logic with exponential backoff
-  - [ ] 7.3 Update card inline when status transitions occur
+  - [ ] 7.3 Update popover item when status transitions occur
   - [ ] 7.4 Show toast notification when recipe reaches "ready" status
-  - [ ] 7.5 Stop polling when recipe reaches terminal state (ready/failed)
-  - [ ] 7.6 Add visual progress indicator during processing states
-  - [ ] 7.7 Handle polling errors and connection issues
-  - [ ] 7.8 Write unit tests for `useRecipePolling` hook
+  - [ ] 7.5 Show Card when recipe reaches "ready" status
+  - [ ] 7.6 Stop polling when recipe reaches terminal state (ready/failed)
+  - [ ] 7.7 Add visual progress indicator during processing states
+  - [ ] 7.8 Handle polling errors and connection issues
+  - [ ] 7.9 Write unit tests for `useRecipePolling` hook
 
 - [ ] **8.0 Card Actions & Interactions**
 
@@ -130,7 +131,7 @@
   - [ ] 8.5 Build kebab menu with Retry, View Post, Delete actions
   - [ ] 8.6 Implement "Retry" action for failed recipes (resume from appropriate step)
   - [ ] 8.7 Add "View Post" action to open Instagram URL in new tab
-  - [ ] 8.8 Implement "Delete" action with confirmation dialog
+  - [ ] 8.8 Implement "Delete" action with confirmation dialog (shadcn component)
   - [ ] 8.9 Ensure all actions are only visible/enabled when appropriate (based on recipe_data presence)
   - [ ] 8.10 Add aria-labels to all action icons
   - [ ] 8.11 Write unit tests for all card actions

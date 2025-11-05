@@ -52,6 +52,15 @@ export interface Step {
 
 // ===== Instagram post with embedded recipe =====
 
+export type RecipeStatus =
+  | "queued"
+  | "scraping"
+  | "downloading_media"
+  | "uploading_media"
+  | "extracting"
+  | "ready"
+  | "failed";
+
 export interface InstagramRecipePost {
   inputUrl: string;
   id: string;
@@ -84,6 +93,10 @@ export interface InstagramRecipePost {
   musicInfo?: MusicInfo;
   isCommentsDisabled?: boolean;
   recipe_data?: RecipeData; // also usable standalone
+  status?: RecipeStatus; // processing status
+  progress?: number; // 0-100 processing progress
+  error?: string; // error message if failed
+  createdAt?: string; // ISO8601 timestamp when recipe was added
 }
 
 export interface CommentThread {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import { ProcessingQueueProvider } from "@/lib/hooks/useProcessingQueue";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -29,7 +30,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fraunces.variable} ${inter.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <ProcessingQueueProvider>{children}</ProcessingQueueProvider>
         </ThemeProvider>
       </body>
     </html>

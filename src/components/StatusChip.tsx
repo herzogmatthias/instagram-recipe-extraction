@@ -1,14 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-export type RecipeStatus =
-  | "queued"
-  | "scraping"
-  | "downloading_media"
-  | "uploading_media"
-  | "extracting"
-  | "ready"
-  | "failed";
+import { RecipeStatus } from "@/models/InstagramRecipePost";
 
 interface StatusChipProps {
   status: RecipeStatus;
@@ -68,7 +60,7 @@ export function StatusChip({ status, className }: StatusChipProps) {
     <Badge
       variant="outline"
       className={cn(
-        "text-xs font-medium border",
+        "text-xs font-medium border px-3 py-1 rounded-full",
         config.color,
         config.bgColor,
         className

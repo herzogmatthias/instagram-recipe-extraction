@@ -1,125 +1,232 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useTheme } from "next-themes";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Moon, Sun, Home, Clock, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Moon,
+  Sun,
+  Home,
+  Clock,
+  Settings,
+  Plus,
+  Filter,
+  Ellipsis,
+} from "lucide-react";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ProcessingQueuePopover,
+  type ProcessingQueueItem,
+} from "./ProcessingQueuePopover";
 
 interface NavbarProps {
-  onSearch?: (query: string) => void;
-  searchPlaceholder?: string;
+  className?: string;
+  onAddRecipe?: () => void;
+  onOpenFilters?: () => void;
+  activeFilterCount?: number;
+  processingItems: ProcessingQueueItem[];
+  processingOpen: boolean;
+  onProcessingOpenChange: (open: boolean) => void;
+  onRemoveFromQueue?: (id: string) => void;
+  onRetryFromQueue?: (id: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onSearch,
-  searchPlaceholder = "Search recipes...",
+  onAddRecipe,
+  onOpenFilters,
+  activeFilterCount = 0,
+  processingItems,
+  processingOpen,
+  onProcessingOpenChange,
+  onRemoveFromQueue,
+  onRetryFromQueue,
 }) => {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    const rafId = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
-  useEffect(() => {
-    if (!onSearch) return;
-
-    const timer = setTimeout(() => {
-      onSearch(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, onSearch]);
-
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-    },
-    []
-  );
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
 
-  if (!mounted) {
-    return null;
-  }
+  const itemCount = processingItems.length;
+  const hasItems = itemCount > 0;
+  const badgeLabel = hasItems
+    ? itemCount > 9
+      ? "9+"
+      : itemCount.toString()
+    : null;
+
+  const processingTrigger = (
+    <button
+      type="button"
+      data-testid="nav-processing"
+      aria-expanded={processingOpen}
+      className={cn(
+        "relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "md:h-auto md:w-auto md:gap-2 md:border-0 md:px-5 md:py-2.5 md:text-sm md:font-medium md:hover:bg-accent/40"
+      )}
+    >
+      <Clock className="h-5 w-5 md:h-4 md:w-4" />
+      <span className="hidden md:inline">Processing</span>
+      {badgeLabel && (
+        <>
+          <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold leading-none text-primary-foreground md:hidden">
+            {badgeLabel}
+          </span>
+          <span className="ml-1 hidden md:inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold leading-none text-primary-foreground">
+            {badgeLabel}
+          </span>
+        </>
+      )}
+    </button>
+  );
 
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border h-16"
+      className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16"
       role="navigation"
       aria-label="Main navigation"
     >
-      <div className="h-full container mx-auto px-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <div className="h-full mx-auto flex max-w-[1600px] items-center justify-between px-7 sm:px-9 lg:px-14">
+        <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="font-heading text-xl font-semibold text-foreground hover:text-primary transition-colors"
+            className="rounded-full px-4 py-2 font-heading text-xl font-semibold text-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
           >
             RecipeGram
           </Link>
         </div>
 
-        <div className="hidden md:flex items-center gap-1">
+        <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+            className="hidden md:inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="nav-library"
           >
             <Home className="w-4 h-4" />
             Library
           </Link>
-          <Link
-            href="/processing"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
-            data-testid="nav-processing"
-          >
-            <Clock className="w-4 h-4" />
-            Processing
-          </Link>
+
+          <ProcessingQueuePopover
+            open={processingOpen}
+            onOpenChange={onProcessingOpenChange}
+            items={processingItems}
+            trigger={processingTrigger}
+            onRemoveItem={onRemoveFromQueue}
+            onRetryItem={onRetryFromQueue}
+          />
+
           <Link
             href="/settings"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+            className="hidden md:inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="nav-settings"
           >
             <Settings className="w-4 h-4" />
             Settings
           </Link>
-        </div>
 
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type="search"
-            placeholder={searchPlaceholder}
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="pl-9"
-            data-testid="search-input"
-            aria-label="Search recipes"
-          />
-        </div>
+          <div className="flex items-center gap-2 md:hidden">
+            {onOpenFilters && (
+              <button
+                type="button"
+                onClick={onOpenFilters}
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={
+                  activeFilterCount > 0
+                    ? `Show filters (${activeFilterCount} applied)`
+                    : "Show filters"
+                }
+                data-testid="mobile-filter-toggle"
+              >
+                <Filter className="h-5 w-5" />
+                <span className="sr-only">Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold leading-none text-primary-foreground">
+                    {Math.min(activeFilterCount, 9)}
+                  </span>
+                )}
+              </button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Open navigation menu"
+                  data-testid="nav-overflow-mobile"
+                >
+                  <Ellipsis className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/"
+                    data-testid="nav-library-mobile"
+                    className="flex items-center gap-3"
+                  >
+                    <Home className="h-4 w-4" />
+                    <span>Library</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    onProcessingOpenChange(true);
+                  }}
+                  data-testid="nav-processing-mobile"
+                  className="flex items-center gap-3"
+                >
+                  <Clock className="h-4 w-4" />
+                  <span>Processing</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/settings"
+                    data-testid="nav-settings-mobile"
+                    className="flex items-center gap-3"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          data-testid="theme-toggle"
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          className="shrink-0"
-        >
-          {theme === "dark" ? (
-            <Sun className="w-5 h-5" />
-          ) : (
-            <Moon className="w-5 h-5" />
+          {onAddRecipe && (
+            <Button
+              onClick={onAddRecipe}
+              size="lg"
+              className="hidden md:inline-flex rounded-full px-5 py-2.5 text-sm font-semibold"
+              data-testid="nav-add-recipe"
+            >
+              <Plus className="h-4 w-4" />
+              Add Recipe
+            </Button>
           )}
-        </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            data-testid="theme-toggle"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            className="shrink-0 rounded-full hover:bg-accent/30"
+          >
+            {theme === "dark" ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
       </div>
     </nav>
   );

@@ -1,4 +1,9 @@
-import { InstagramRecipePost, Macros } from "@/models/InstagramRecipePost";
+import {
+  InstagramRecipePost,
+  Macros,
+  Ingredient,
+  Step,
+} from "@/models/InstagramRecipePost";
 
 /**
  * Extract title from recipe data with fallback to caption
@@ -112,4 +117,104 @@ export function formatMetaPills(recipe: InstagramRecipePost): string[] {
   if (macros) pills.push(macros);
 
   return pills;
+}
+
+const INSTAGRAM_SHORTCODE_REGEX = /instagram\.com\/(?:p|reel|tv)\/([^\/?#]+)/i;
+
+export function extractInstagramShortCode(url: string): string | null {
+  const match = url.match(INSTAGRAM_SHORTCODE_REGEX);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return null;
+}
+
+export function createQueuedRecipeFromUrl(url: string): InstagramRecipePost {
+  const now = new Date();
+  const fallbackId = `optimistic-${now.getTime()}`;
+  const shortCode = extractInstagramShortCode(url) ?? fallbackId;
+
+  return {
+    inputUrl: url,
+    id: fallbackId,
+    type: "Placeholder",
+    shortCode,
+    caption: "We are processing this Instagram post to extract the recipe.",
+    hashtags: [],
+    mentions: [],
+    url,
+    commentsCount: 0,
+    firstComment: null,
+    latestComments: [],
+    dimensionsHeight: null,
+    dimensionsWidth: null,
+    displayUrl: null,
+    images: [],
+    videoUrl: null,
+    alt: null,
+    likesCount: 0,
+    videoViewCount: null,
+    videoPlayCount: null,
+    timestamp: now.toISOString(),
+    childPosts: [],
+    ownerFullName: null,
+    ownerUsername: "pending",
+    ownerId: "pending",
+    productType: "feed",
+    videoDuration: null,
+    isSponsored: false,
+    musicInfo: undefined,
+    isCommentsDisabled: false,
+    recipe_data: undefined,
+    status: "queued",
+    progress: 0,
+    createdAt: now.toISOString(),
+  };
+}
+
+function createPlaceholderIngredient(): Ingredient {
+  return {
+    id: "placeholder-ingredient",
+    name: "Ingredients will appear once extraction completes",
+    quantity: null,
+    unit: null,
+  };
+}
+
+function createPlaceholderStep(): Step {
+  return {
+    idx: 1,
+    text: "We will add full instructions as soon as the recipe is ready.",
+    used_ingredients: [],
+  };
+}
+
+export function createReadyRecipeFromUrl(url: string): InstagramRecipePost {
+  const base = createQueuedRecipeFromUrl(url);
+
+  let title = "Imported Instagram Recipe";
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.split("/").filter(Boolean);
+    if (path.length >= 2) {
+      title = path[1].replace(/[-_]/g, " ");
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+    }
+  } catch {
+    // ignore parsing errors
+  }
+
+  return {
+    ...base,
+    caption: base.caption ?? "Imported recipe from Instagram.",
+    recipe_data: {
+      title,
+      ingredients: [createPlaceholderIngredient()],
+      steps: [createPlaceholderStep()],
+      tags: [],
+      difficulty: "easy",
+      cuisine: undefined,
+      macros_per_serving: null,
+    },
+  } as InstagramRecipePost;
 }
