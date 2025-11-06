@@ -64,60 +64,60 @@
 
 ## Tasks
 
-- [ ] 1.0 Set up Firestore integration and database infrastructure
+- [x] 1.0 Set up Firestore integration and database infrastructure
 
-  - [ ] 1.1 Create `src/lib/server/services/firestore.ts` with Firebase Admin SDK initialization - either use `GOOGLE_APPLICATION_CREDENTIALS` env var (path to serviceAccountKey.json) OR directly import and pass the service account JSON to `admin.credential.cert()`
-  - [ ] 1.2 Implement Firestore connection utilities: `getFirestore()`, `getImportsCollection()`, `getRecipesCollection()`
-  - [ ] 1.3 Add helper functions for CRUD operations: `createImport()`, `updateImport()`, `getImport()`, `createRecipe()`, `getRecipe()`, `listRecipes()` - store media URLs not files
-  - [ ] 1.4 Add `serviceAccountKey.json`, `.env`, and `.env.local` to `.gitignore` and create `.env.example` with required backend environment variables (APIFY_API_KEY, GEMINI_API_KEY, GOOGLE_APPLICATION_CREDENTIALS)
-  - [ ] 1.5 Create `firestore.rules` with security rules: allow public read access to recipes collection, deny all writes (backend-only via Admin SDK)
-  - [ ] 1.6 Write unit tests for Firestore service with mocked Firebase Admin SDK
-  - [ ] 1.7 Document Firestore schema in code comments (imports and recipes collections - no separate media collection needed, URLs stored in recipe docs)
+  - [x] 1.1 Create `src/lib/server/services/firestore.ts` with Firebase Admin SDK initialization - either use `GOOGLE_APPLICATION_CREDENTIALS` env var (path to serviceAccountKey.json) OR directly import and pass the service account JSON to `admin.credential.cert()`
+  - [x] 1.2 Implement Firestore connection utilities: `getFirestore()`, `getImportsCollection()`, `getRecipesCollection()`
+  - [x] 1.3 Add helper functions for CRUD operations: `createImport()`, `updateImport()`, `getImport()`, `createRecipe()`, `getRecipe()`, `listRecipes()` - store media URLs not files
+  - [x] 1.4 Add `serviceAccountKey.json`, `.env`, and `.env.local` to `.gitignore` and create `.env.example` with required backend environment variables (APIFY_API_KEY, GEMINI_API_KEY, GOOGLE_APPLICATION_CREDENTIALS)
+  - [x] 1.5 Create `firestore.rules` with security rules: allow public read access to recipes collection, deny all writes (backend-only via Admin SDK)
+  - [x] 1.6 Write unit tests for Firestore service with mocked Firebase Admin SDK
+  - [x] 1.7 Document Firestore schema in code comments (imports and recipes collections - no separate media collection needed, URLs stored in recipe docs)
 
-- [ ] 2.0 Implement Apify Instagram scraping service
+- [x] 2.0 Implement Apify Instagram scraping service
 
-  - [ ] 2.1 Create `src/lib/server/services/apify.ts` with ApifyClient initialization using `APIFY_API_KEY`
-  - [ ] 2.2 Implement `detectPostType(url)` to determine if URL is post, reel, or TV
-  - [ ] 2.3 Implement `scrapeInstagramPost(url)` using appropriate Apify actor (instagram-post-scraper or instagram-reel-scraper)
-  - [ ] 2.4 Add error handling for rate limits, invalid URLs, private posts, and API quota exhaustion
-  - [ ] 2.5 Transform Apify response to match `InstagramRecipePost` schema (map fields appropriately)
-  - [ ] 2.6 Write unit tests with mocked ApifyClient responses for posts, reels, and error cases
-  - [ ] 2.7 Add retry logic with exponential backoff for transient failures
+  - [x] 2.1 Create `src/lib/server/services/apify.ts` with ApifyClient initialization using `APIFY_API_KEY`
+  - [x] 2.2 Implement `detectPostType(url)` to determine if URL is post, reel, or TV
+  - [x] 2.3 Implement `scrapeInstagramPost(url)` using appropriate Apify actor (instagram-post-scraper or instagram-reel-scraper)
+  - [x] 2.4 Add error handling for rate limits, invalid URLs, private posts, and API quota exhaustion
+  - [x] 2.5 Transform Apify response to match `InstagramRecipePost` schema (map fields appropriately)
+  - [x] 2.6 Write unit tests with mocked ApifyClient responses for posts, reels, and error cases
+  - [x] 2.7 Add retry logic with exponential backoff for transient failures
 
-- [ ] 3.0 Implement media download and Gemini upload handlers
+- [x] 3.0 Implement media download and Gemini upload handlers
 
-  - [ ] 3.1 Create `src/lib/server/services/media.ts` with `downloadMedia(url, filename)` function to save both images AND videos to `/tmp` directory temporarily
-  - [ ] 3.2 Implement `getMediaType(url)` to detect image vs. video based on URL or content-type headers
-  - [ ] 3.3 Add `cleanupMedia(filepath)` to delete temporary files after Gemini processing completes
-  - [ ] 3.4 Implement error handling for network failures, large files (>20MB limit for Gemini), and unsupported formats
-  - [ ] 3.5 Create `uploadToGemini(filepath, mimeType)` in `src/lib/server/services/gemini.ts` using Google GenAI File API
-  - [ ] 3.6 Wait for Gemini file to be processed (poll file state until ACTIVE) and store file URI for analysis
-  - [ ] 3.7 Write unit tests with mocked file system operations and Gemini API calls
-  - [ ] 3.8 Add timeout handling for long uploads and file processing (fail after 2 minutes)
+  - [x] 3.1 Create `src/lib/server/services/media.ts` with `downloadMedia(url, filename)` function to save both images AND videos to `/tmp` directory temporarily
+  - [x] 3.2 Implement `getMediaType(url)` to detect image vs. video based on URL or content-type headers
+  - [x] 3.3 Add `cleanupMedia(filepath)` to delete temporary files after Gemini processing completes
+  - [x] 3.4 Implement error handling for network failures, large files (>20MB limit for Gemini), and unsupported formats
+  - [x] 3.5 Create `uploadToGemini(filepath, mimeType)` in `src/lib/server/services/gemini.ts` using Google GenAI File API
+  - [x] 3.6 Wait for Gemini file to be processed (poll file state until ACTIVE) and store file URI for analysis
+  - [x] 3.7 Write unit tests with mocked file system operations and Gemini API calls
+  - [x] 3.8 Add timeout handling for long uploads and file processing (fail after 2 minutes)
 
-- [ ] 4.0 Implement Gemini recipe extraction with schema validation
+- [x] 4.0 Implement Gemini recipe extraction with schema validation
 
-  - [ ] 4.1 Create `src/lib/server/services/gemini.ts` with `initializeGemini()` using `GEMINI_API_KEY`
-  - [ ] 4.2 Build prompt template for recipe extraction including caption, media reference, and desired JSON schema
-  - [ ] 4.3 Implement `extractRecipe(geminiFileUri, caption, metadata)` to call Gemini with vision model
-  - [ ] 4.4 Configure Gemini model for JSON output mode with strict schema enforcement
-  - [ ] 4.5 Create `src/lib/server/services/recipeValidator.ts` with JSON schema validation against `RecipeData` interface
-  - [ ] 4.6 Implement fallback parsing if Gemini returns invalid JSON (extract from markdown code blocks)
-  - [ ] 4.7 Add confidence scoring based on completeness of extracted data
-  - [ ] 4.8 Write unit tests with mocked Gemini responses (valid JSON, invalid JSON, partial data)
-  - [ ] 4.9 Handle edge cases: no recipe found, ambiguous content, multiple recipes in one post
+  - [x] 4.1 Create `src/lib/server/services/gemini.ts` with `initializeGemini()` using `GEMINI_API_KEY`
+  - [x] 4.2 Build prompt template for recipe extraction including caption, media reference, and desired JSON schema
+  - [x] 4.3 Implement `extractRecipe(geminiFileUri, caption, metadata)` to call Gemini with vision model
+  - [x] 4.4 Configure Gemini model for JSON output mode with strict schema enforcement
+  - [x] 4.5 Create `src/lib/server/services/recipeValidator.ts` with JSON schema validation against `RecipeData` interface
+  - [x] 4.6 Implement error handling if Gemini returns invalid json - retry or fail gracefully
+  - [x] 4.7 Add confidence scoring based on completeness of extracted data
+  - [x] 4.8 Write unit tests with mocked Gemini responses (valid JSON, invalid JSON, partial data)
+  - [x] 4.9 Handle edge cases: no recipe found, ambiguous content, multiple recipes in one post
 
-- [ ] 5.0 Build job orchestration and state management system
+- [x] 5.0 Build job orchestration and state management system
 
-  - [ ] 5.1 Create `src/lib/server/services/jobOrchestrator.ts` with `processRecipeImport(importId)` main function
-  - [ ] 5.2 Implement state transition functions: `setQueued()`, `setScraping()`, `setDownloadingMedia()`, `setUploadingMedia()`, `setExtracting()`, `setReady()`, `setFailed(stage, error)`
-  - [ ] 5.3 Build job pipeline: scrape → download → upload → extract → validate → persist
-  - [ ] 5.4 Add progress tracking (0-100) at each stage and update Firestore document
-  - [ ] 5.5 Implement error recovery: retry logic per stage with max attempts, save failure state with stage and error message
-  - [ ] 5.6 Add cleanup on success (delete temp media files) and failure (partial cleanup, preserve debug info)
-  - [ ] 5.7 Implement idempotency checks to prevent duplicate processing of same import
-  - [ ] 5.8 Write unit tests for full pipeline, individual stages, error scenarios, and retry logic
-  - [ ] 5.9 Add logging at each stage for debugging and monitoring
+  - [x] 5.1 Create `src/lib/server/services/jobOrchestrator.ts` with `processRecipeImport(importId)` main function
+  - [x] 5.2 Implement state transition functions: `setQueued()`, `setScraping()`, `setDownloadingMedia()`, `setUploadingMedia()`, `setExtracting()`, `setReady()`, `setFailed(stage, error)`
+  - [x] 5.3 Build job pipeline: scrape → download → upload → extract → validate → persist
+  - [x] 5.4 Add progress tracking (0-100) at each stage and update Firestore document
+  - [x] 5.5 Implement error recovery: retry logic per stage with max attempts, save failure state with stage and error message
+  - [x] 5.6 Add cleanup on success (delete temp media files) and failure (partial cleanup, preserve debug info)
+  - [x] 5.7 Implement idempotency checks to prevent duplicate processing of same import
+  - [x] 5.8 Write unit tests for full pipeline, individual stages, error scenarios, and retry logic
+  - [x] 5.9 Add logging at each stage for debugging and monitoring
 
 - [ ] 6.0 Update API routes and integrate with frontend
 
@@ -135,4 +135,5 @@
   - [ ] 6.12 Add error responses with proper HTTP status codes (400 for validation, 404 for not found, 500 for server errors)
   - [ ] 6.13 Write integration tests for all API endpoints with mocked Firestore
   - [ ] 6.14 Update frontend to handle new recipe states (queued, scraping, downloading, uploading, extracting, ready, failed) with real-time progress updates
+    - [ ] 6.14.1 Make sure to clean up obsolete polling logic if not needed anymore.
   - [ ] 6.15 Test end-to-end flow: submit URL → real-time progress updates → display final recipe
