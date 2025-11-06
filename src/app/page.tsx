@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Navbar from "@/components/navbar/Navbar";
 import { RecipeCard } from "@/components/recipe-card/RecipeCard";
 import { FilterBar, FilterState } from "@/components/filter-bar/FilterBar";
@@ -8,7 +8,6 @@ import { AddLinkModal } from "@/components/add-link-modal/AddLinkModal";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useRecipeData } from "@/lib/client/hooks/useRecipeData";
-import { useRecipePolling } from "@/lib/client/hooks/useRecipePolling";
 import { useProcessingQueue } from "@/lib/client/hooks/useProcessingQueue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/shared/utils/utils";
@@ -17,6 +16,7 @@ import {
   InstagramRecipePost,
   RecipeStatus,
 } from "@/models/InstagramRecipePost";
+import type { RecipeImportDocument } from "@/models/RecipeImport";
 import { toast, Toaster } from "sonner";
 import {
   Dialog,
@@ -39,7 +39,7 @@ function RecipeCardSkeleton() {
 }
 
 export default function Home() {
-  const { recipes, loading, error, refetch } = useRecipeData();
+  const { recipes, loading, error } = useRecipeData();
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: "",
     selectedCuisines: [],
@@ -54,8 +54,6 @@ export default function Home() {
     queue: processingQueue,
     addToQueue,
     removeFromQueue,
-    updateQueueItem,
-    startPolling: startQueuePolling,
     isInQueue,
   } = useProcessingQueue();
 
@@ -67,65 +65,94 @@ export default function Home() {
   }, [recipes]);
 
   // Handle status changes from polling
-  const handleStatusChange = useCallback(
-    (
-      recipeId: string,
-      newStatus: RecipeStatus,
-      recipe: InstagramRecipePost
-    ) => {
-      // Update queue item with new status and data
-      updateQueueItem(recipeId, {
-        status: newStatus,
-        progress: recipe.progress || 0,
-        title: recipe.recipe_data?.title,
-        displayUrl: recipe.displayUrl,
-        error: recipe.error,
-      });
+  const statusNotificationsRef = useRef(new Map<string, RecipeStatus>());
 
-      // Show toast notification when recipe reaches ready status
-      if (newStatus === "ready") {
-        const title = recipe.recipe_data?.title || "Recipe";
-        toast.success(`${title} is ready!`, {
-          description: "Your recipe has been extracted successfully.",
-          duration: 5000,
+  useEffect(() => {
+    processingQueue.forEach((item) => {
+      const previous = statusNotificationsRef.current.get(item.id);
+      if (previous !== item.status) {
+        statusNotificationsRef.current.set(item.id, item.status);
+        if (item.status === "ready") {
+          toast.success("Recipe is ready!", {
+            description: "Your recipe has been extracted successfully.",
+            duration: 5000,
+          });
+        }
+      }
+    });
+
+    statusNotificationsRef.current.forEach((_status, id) => {
+      if (!processingQueue.some((item) => item.id === id)) {
+        statusNotificationsRef.current.delete(id);
+      }
+    });
+  }, [processingQueue]);
+
+  const handleAddRecipeSubmit = useCallback(
+    async ({ url }: { url: string }) => {
+      try {
+        // Show processing popover
+        setProcessingPopoverOpen(true);
+
+        // Call the API to create the recipe
+        const response = await fetch("/api/recipes/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
         });
 
-        // Refetch to show the card
-        refetch();
-      } else if (newStatus === "failed") {
-        // Don't show a toast on failure; update queue item only
+        let payload: unknown = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+
+        if (!response.ok) {
+          const message =
+            payload &&
+            typeof (payload as { error?: unknown }).error === "string"
+              ? ((payload as { error?: string }).error as string)
+              : "Failed to add recipe.";
+          throw new Error(message);
+        }
+
+        const importDoc = payload as RecipeImportDocument;
+
+        if (!isInQueue(importDoc.id)) {
+          addToQueue(importDoc);
+        }
+
+        toast.success("Recipe added to queue", {
+          description: "Your recipe is being processed.",
+          duration: 3000,
+        });
+      } catch (err) {
+        throw err instanceof Error ? err : new Error("Failed to add recipe.");
       }
     },
-    [updateQueueItem, refetch]
+    [addToQueue, isInQueue]
   );
-
-  // Handle polling errors
-  const handlePollingError = useCallback((recipeId: string, error: Error) => {
-    // Quiet errors: log only, no toast
-    console.error(`Polling error for recipe ${recipeId}:`, error);
-  }, []);
 
   const handleRetryFromQueue = useCallback(
-    (id: string) => {
-      // Reset item and restart polling
-      updateQueueItem(id, {
-        status: "queued",
-        progress: 0,
-        error: undefined,
-        isPolling: true,
-      });
-      startQueuePolling(id);
+    async (id: string) => {
+      const item = processingQueue.find((entry) => entry.id === id);
+      if (!item) {
+        return;
+      }
+      try {
+        await handleAddRecipeSubmit({ url: item.url });
+        removeFromQueue(id);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to retry import.";
+        toast.error(message);
+      }
     },
-    [updateQueueItem, startQueuePolling]
+    [processingQueue, handleAddRecipeSubmit, removeFromQueue]
   );
-
-  // Start polling for queue items
-  useRecipePolling({
-    queueItems: processingQueue,
-    onStatusChange: handleStatusChange,
-    onError: handlePollingError,
-    enabled: !loading,
-  });
 
   const { cuisines, tags } = useMemo(() => {
     const cuisineSet = new Set<string>();
@@ -202,55 +229,6 @@ export default function Home() {
     setAddModalOpen(true);
   }, []);
 
-  const handleAddRecipeSubmit = useCallback(
-    async (url: string) => {
-      try {
-        // Show processing popover
-        setProcessingPopoverOpen(true);
-
-        // Call the API to create the recipe
-        const response = await fetch("/api/recipes", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url }),
-        });
-
-        let payload: unknown = null;
-        try {
-          payload = await response.json();
-        } catch {
-          payload = null;
-        }
-
-        if (!response.ok) {
-          const message =
-            payload &&
-            typeof (payload as { error?: unknown }).error === "string"
-              ? ((payload as { error?: string }).error as string)
-              : "Failed to add recipe.";
-          throw new Error(message);
-        }
-
-        // Add to processing queue
-        const newRecipe = payload as InstagramRecipePost;
-
-        // Only add if not already in queue
-        if (!isInQueue(newRecipe.id)) {
-          addToQueue(newRecipe);
-        } // Show success toast
-        toast.success("Recipe added to queue", {
-          description: "Your recipe is being processed.",
-          duration: 3000,
-        });
-      } catch (err) {
-        throw err instanceof Error ? err : new Error("Failed to add recipe.");
-      }
-    },
-    [addToQueue, isInQueue]
-  );
-
   const showFilter = !loading && readyRecipes.length > 0;
   const showNoResults =
     !loading && filteredRecipes.length === 0 && readyRecipes.length > 0;
@@ -262,8 +240,8 @@ export default function Home() {
     filters.selectedTags.length;
 
   const handleRecipeDeleted = useCallback(() => {
-    refetch();
-  }, [refetch]);
+    // Firestore listeners update the UI automatically.
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -319,7 +297,13 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex flex-col gap-14 lg:grid lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] lg:items-start lg:gap-16 2xl:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+          <div
+            className={cn(
+              "flex flex-col gap-14",
+              showFilter &&
+                "lg:grid lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] lg:items-start lg:gap-16 2xl:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]"
+            )}
+          >
             {showFilter && (
               <aside
                 className="hidden lg:sticky lg:top-32 lg:block"
@@ -339,7 +323,7 @@ export default function Home() {
             <section
               className={cn(
                 "flex-1 space-y-12",
-                !showFilter && "mx-auto w-full max-w-4xl"
+                (!showFilter || showEmptyState) && "mx-auto w-full max-w-4xl"
               )}
             >
               {!loading && (

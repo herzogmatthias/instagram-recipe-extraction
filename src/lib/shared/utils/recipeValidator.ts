@@ -4,6 +4,8 @@ import {
   type Config,
   type Schema,
 } from "ts-json-schema-generator";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import Ajv, {
   type ErrorObject,
   type JSONSchemaType,
@@ -71,6 +73,7 @@ function enforceArrayMinimums(
 
   const ingredientSchema = schema.properties.ingredients as Schema | undefined;
   if (ingredientSchema) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ingredientSchema as any).minItems = 1;
     relaxIngredientRequirements(
       (ingredientSchema as { items?: Schema }).items as Schema | undefined,
@@ -80,6 +83,7 @@ function enforceArrayMinimums(
 
   const stepsSchema = schema.properties.steps as Schema | undefined;
   if (stepsSchema) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (stepsSchema as any).minItems = 1;
   }
 }
@@ -103,8 +107,8 @@ function relaxIngredientRequirements(
 
   const required = (itemSchema as { required?: string[] }).required;
   if (Array.isArray(required)) {
-    (itemSchema as { required?: string[] }).required = required.filter((field) =>
-      ["name"].includes(field)
+    (itemSchema as { required?: string[] }).required = required.filter(
+      (field) => ["name"].includes(field)
     );
   }
 }
@@ -114,33 +118,113 @@ export function getRecipeResponseSchema(): Schema {
     return responseSchemaCache;
   }
 
-  const recipeSchema = getRecipeSchema();
-  const recipeRef =
-    recipeSchema.definitions?.RecipeData !== undefined
-      ? { $ref: "#/definitions/RecipeData" }
-      : recipeSchema;
-  responseSchemaCache = {
-    type: "object",
-    required: ["recipe"],
-    additionalProperties: true,
-    properties: {
-      recipe: recipeRef,
-      recipes: {
-        type: "array",
-        items: recipeRef,
-      },
-      reasoning: {
-        type: "array",
-        items: { type: "string" },
-      },
-      assumptions: {
-        type: "array",
-        items: { type: "string" },
-      },
-    },
-    definitions: recipeSchema.definitions,
-  };
+  // Build a Gemini-compatible JSON schema using Zod, with no $ref/definitions.
+  const IngredientSchema = z.object({
+    id: z
+      .string()
+      .describe("Stable identifier for this ingredient (ing_<id>)."),
+    name: z.string().describe("Name of the ingredient."),
+    quantity: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Quantity as seen in caption/media."),
+    unit: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Unit of measure if applicable."),
+    preparation: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Preparation note, e.g., finely chopped."),
+    section: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Logical group, e.g., 'Dough'."),
+    optional: z
+      .boolean()
+      .optional()
+      .describe("True if ingredient is optional."),
+    chefs_note: z.string().optional().describe("Optional note from the chef."),
+  });
 
+  const StepSchema = z.object({
+    idx: z.number().describe("1-based step index."),
+    text: z.string().describe("Instruction text for this step."),
+    section: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Optional section name for grouping."),
+    estimated_time_min: z
+      .number()
+      .optional()
+      .describe("Optional estimated minutes for this step."),
+    chefs_note: z.string().optional().describe("Optional note for this step."),
+    used_ingredients: z
+      .array(z.string())
+      .describe("IDs of ingredients used in this step."),
+  });
+
+  const RecipeSchema = z.object({
+    title: z.string().describe("Human-readable recipe title."),
+    tags: z.array(z.string()).optional().describe("Relevant tags/keywords."),
+    cuisine: z
+      .string()
+      .optional()
+      .describe("Cuisine or style if identifiable."),
+    difficulty: z.string().optional().describe("Overall difficulty rating."),
+    total_time_min: z
+      .number()
+      .optional()
+      .describe("Total minutes to complete the recipe."),
+    assumptions: z
+      .array(z.string())
+      .optional()
+      .describe("Assumptions made from media when details missing."),
+    ingredients: z
+      .array(IngredientSchema)
+      .min(1)
+      .describe("All ingredients required."),
+    steps: z.array(StepSchema).min(1).describe("Ordered preparation steps."),
+    macros_per_serving: z
+      .object({
+        calories: z.number().optional(),
+        protein_g: z.number().optional(),
+        fat_g: z.number().optional(),
+        carbs_g: z.number().optional(),
+      })
+      .nullable()
+      .optional()
+      .describe("Optional nutrition per serving."),
+    confidence: z
+      .number()
+      .optional()
+      .describe("Model confidence 0..1 for extracted data."),
+  });
+
+  const EnvelopeSchema = z.object({
+    recipe: RecipeSchema.describe("Primary recipe object (preferred)."),
+    recipes: z
+      .array(RecipeSchema)
+      .optional()
+      .describe("Alternative: list of recipes if multiple are present."),
+    reasoning: z
+      .array(z.string())
+      .optional()
+      .describe("Optional chain-of-thought style justifications."),
+    assumptions: z
+      .array(z.string())
+      .optional()
+      .describe("Extra stated assumptions about missing details."),
+  });
+
+  // Inline references to avoid $ref/definitions, which the API rejects.
+  const jsonSchema = zodToJsonSchema(EnvelopeSchema);
+  responseSchemaCache = jsonSchema as unknown as Schema;
   return responseSchemaCache;
 }
 

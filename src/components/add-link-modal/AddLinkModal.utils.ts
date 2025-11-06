@@ -24,4 +24,3 @@ export function getHelperText(error: string | null, url: string): string {
 
   return "Paste any Instagram post URL. We'll take it from there.";
 }
-

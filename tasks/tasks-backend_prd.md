@@ -119,21 +119,21 @@
   - [x] 5.8 Write unit tests for full pipeline, individual stages, error scenarios, and retry logic
   - [x] 5.9 Add logging at each stage for debugging and monitoring
 
-- [ ] 6.0 Update API routes and integrate with frontend
+- [x] 6.0 Update API routes and integrate with frontend
 
-  - [ ] 6.1 Create `src/app/api/recipes/import/route.ts` with POST handler to accept Instagram URL
-  - [ ] 6.2 Validate URL format and extract shortcode in import endpoint
-  - [ ] 6.3 Create Firestore import document with `status: "queued"` and return import ID immediately
-  - [ ] 6.4 Trigger async job orchestration (non-blocking) - consider using background job or serverless function
-  - [ ] 6.5 Update `src/app/api/recipes/route.ts` GET handler to fetch from Firestore instead of JSON files (keep for initial load/SSR)
-  - [ ] 6.6 Add query parameters for filtering by status, pagination, and sorting
-  - [ ] 6.7 Update `src/app/api/recipes/[id]/route.ts` GET handler to fetch single recipe from Firestore
-  - [ ] 6.8 Create `src/lib/client/firebase.ts` with Firebase client SDK initialization using public config from `.env.local` (NEXT_PUBLIC_FIREBASE_API_KEY, etc.)
-  - [ ] 6.9 Update `src/lib/client/hooks/useRecipeData.ts` (move from src/lib/hooks/) to use Firestore `onSnapshot()` listeners for real-time updates instead of polling
-  - [ ] 6.10 Implement collection listener for recipes list and document listener for individual recipe status updates
-  - [ ] 6.11 Move existing utilities to `src/lib/shared/utils/` for code that works on both client and server (e.g., recipeHelpers.ts)
-  - [ ] 6.12 Add error responses with proper HTTP status codes (400 for validation, 404 for not found, 500 for server errors)
-  - [ ] 6.13 Write integration tests for all API endpoints with mocked Firestore
-  - [ ] 6.14 Update frontend to handle new recipe states (queued, scraping, downloading, uploading, extracting, ready, failed) with real-time progress updates
-    - [ ] 6.14.1 Make sure to clean up obsolete polling logic if not needed anymore.
+  - [x] 6.1 Create `src/app/api/recipes/import/route.ts` with POST handler to accept Instagram URL
+  - [x] 6.2 Validate URL format and extract shortcode in import endpoint
+  - [x] 6.3 Create Firestore import document with `status: "queued"` and return import ID immediately
+  - [x] 6.4 Trigger async job orchestration (non-blocking) - consider using background job or serverless function
+  - [x] 6.5 Update `src/app/api/recipes/route.ts` GET handler to fetch from Firestore instead of JSON files (keep for initial load/SSR)
+  - [x] 6.6 Add query parameters for filtering by status, pagination, and sorting
+  - [x] 6.7 Update `src/app/api/recipes/[id]/route.ts` GET handler to fetch single recipe from Firestore
+  - [x] 6.8 Create `src/lib/client/firebase.ts` with Firebase client SDK initialization using public config from `.env.local` (NEXT_PUBLIC_FIREBASE_API_KEY, etc.)
+  - [x] 6.9 Update `src/lib/client/hooks/useRecipeData.ts` (move from src/lib/hooks/) to use Firestore `onSnapshot()` listeners for real-time updates instead of polling
+  - [x] 6.10 Implement collection listener for recipes list and document listener for individual recipe status updates
+  - [x] 6.11 Move existing utilities to `src/lib/shared/utils/` for code that works on both client and server (e.g., recipeHelpers.ts)
+  - [x] 6.12 Add error responses with proper HTTP status codes (400 for validation, 404 for not found, 500 for server errors)
+  - [x] 6.13 Write integration tests for all API endpoints with mocked Firestore
+  - [x] 6.14 Update frontend to handle new recipe states (queued, scraping, downloading, uploading, extracting, ready, failed) with real-time progress updates
+    - [x] 6.14.1 Make sure to clean up obsolete polling logic if not needed anymore.
   - [ ] 6.15 Test end-to-end flow: submit URL → real-time progress updates → display final recipe

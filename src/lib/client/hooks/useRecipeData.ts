@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { InstagramRecipePost } from "@/models/InstagramRecipePost";
+import { useState, useEffect, useCallback } from "react";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { getClientFirestore } from "@/lib/client/firebase";
+import type { InstagramRecipePost } from "@/models/InstagramRecipePost";
 
 interface UseRecipeDataReturn {
   recipes: InstagramRecipePost[];
@@ -15,42 +17,78 @@ export function useRecipeData(): UseRecipeDataReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadRecipes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/recipes");
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch recipes: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (!Array.isArray(data)) {
-        throw new Error("Invalid data format: expected an array");
-      }
-
-      setRecipes(data);
-    } catch (err) {
-      const error =
-        err instanceof Error ? err : new Error("Unknown error occurred");
-      setError(error);
-      setRecipes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadRecipes();
+    try {
+      const db = getClientFirestore();
+      const recipesRef = collection(db, "recipes");
+      const recipesQuery = query(recipesRef, orderBy("createdAt", "desc"));
+
+      const unsubscribe = onSnapshot(
+        recipesQuery,
+        (snapshot) => {
+          const mapped = snapshot.docs.map((doc) => {
+            const data = doc.data() as Record<string, unknown>;
+            return normalizeRecipeDoc({ id: doc.id, ...data });
+          }) as InstagramRecipePost[];
+          setRecipes(mapped);
+          setLoading(false);
+          setError(null);
+        },
+        (err) => {
+          setError(new Error(err.message));
+          setLoading(false);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("Unable to connect to Firestore")
+      );
+      setLoading(false);
+      return () => {};
+    }
+  }, []);
+
+  const refetch = useCallback(async () => {
+    // Firestore listeners keep data fresh; refetch is a no-op for compatibility.
+    return Promise.resolve();
   }, []);
 
   return {
     recipes,
     loading,
     error,
-    refetch: loadRecipes,
+    refetch,
   };
+}
+
+function normalizeRecipeDoc(doc: Record<string, unknown>): InstagramRecipePost {
+  const createdAt = toIsoString(doc.createdAt);
+  const updatedAt = toIsoString(doc.updatedAt);
+
+  return {
+    ...(doc as InstagramRecipePost),
+    id: typeof doc.id === "string" ? doc.id : "",
+    createdAt: createdAt ?? (doc.timestamp as string | undefined),
+    updatedAt: updatedAt ?? undefined,
+    status: (doc.status as RecipeStatus | undefined) ?? "ready",
+    progress: typeof doc.progress === "number" ? doc.progress : 100,
+  };
+}
+
+type RecipeStatus = InstagramRecipePost["status"];
+
+function toIsoString(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (
+    typeof value === "object" &&
+    typeof (value as { toDate?: () => Date }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return undefined;
 }

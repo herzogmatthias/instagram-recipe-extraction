@@ -1,6 +1,7 @@
 /** @jest-environment node */
 
-import type { RecipeDocument, RecipeImportDocument } from "./firestore";
+import type { RecipeDocument } from "./firestore";
+import type { RecipeImportDocument } from "@/models/RecipeImport";
 import { processRecipeImport } from "./jobOrchestrator";
 import {
   createRecipe,

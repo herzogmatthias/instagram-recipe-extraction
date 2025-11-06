@@ -1,7 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import { promises as fs } from "fs";
-import { InstagramRecipePost } from "@/models/InstagramRecipePost";
+import { NextResponse } from "next/server";
+import { deleteRecipe, getRecipe } from "@/lib/server/services/firestore";
 
 async function resolveParams(
   params: { id: string } | Promise<{ id: string }>
@@ -13,7 +11,7 @@ async function resolveParams(
 }
 
 export async function GET(
-  _request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -26,41 +24,12 @@ export async function GET(
       );
     }
 
-    const dataDirectory = path.join(process.cwd(), "data");
-
-    try {
-      await fs.access(dataDirectory);
-    } catch {
-      return NextResponse.json(
-        { error: "Data directory not found" },
-        { status: 500 }
-      );
+    const recipe = await getRecipe(id);
+    if (!recipe) {
+      return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
     }
 
-    // Try to find the file with this ID
-    const files = await fs.readdir(dataDirectory);
-    const jsonFiles = files.filter((file) => file.endsWith(".json"));
-
-    for (const file of jsonFiles) {
-      const filePath = path.join(dataDirectory, file);
-      const fileContent = await fs.readFile(filePath, "utf8");
-      const recipes: InstagramRecipePost[] = JSON.parse(fileContent);
-
-      const recipe = recipes.find((r) => r.id === id);
-      if (recipe) {
-        // Add default status if not present (for existing data)
-        const recipeWithStatus: InstagramRecipePost = {
-          ...recipe,
-          status: recipe.status || "ready",
-          progress: recipe.progress !== undefined ? recipe.progress : 100,
-          createdAt: recipe.createdAt || recipe.timestamp,
-        };
-
-        return NextResponse.json(recipeWithStatus);
-      }
-    }
-
-    return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+    return NextResponse.json(recipe);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown error occurred";
@@ -69,7 +38,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -82,45 +51,8 @@ export async function DELETE(
       );
     }
 
-    const dataDirectory = path.join(process.cwd(), "data");
-    const files = await fs.readdir(dataDirectory);
-    const jsonFiles = files.filter((file) => file.endsWith(".json"));
-
-    for (const file of jsonFiles) {
-      const filePath = path.join(dataDirectory, file);
-      const fileContent = await fs.readFile(filePath, "utf8");
-
-      try {
-        const parsed: unknown = JSON.parse(fileContent);
-
-        if (Array.isArray(parsed)) {
-          const typedRecipes = parsed as InstagramRecipePost[];
-          const matchIndex = typedRecipes.findIndex(
-            (recipe) => recipe.id === id
-          );
-
-          if (matchIndex !== -1) {
-            typedRecipes.splice(matchIndex, 1);
-            await fs.writeFile(
-              filePath,
-              JSON.stringify(typedRecipes, null, 2)
-            );
-            return NextResponse.json({ success: true, deletedId: id });
-          }
-        } else if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          (parsed as InstagramRecipePost).id === id
-        ) {
-          await fs.writeFile(filePath, JSON.stringify({}, null, 2));
-          return NextResponse.json({ success: true, deletedId: id });
-        }
-      } catch (error) {
-        console.error(`Failed to process ${file}:`, error);
-      }
-    }
-
-    return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+    await deleteRecipe(id);
+    return NextResponse.json({ success: true, deletedId: id });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown error occurred";

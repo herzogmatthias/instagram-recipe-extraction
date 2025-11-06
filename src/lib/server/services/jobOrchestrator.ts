@@ -1,11 +1,14 @@
-import type { RecipeStatus, InstagramRecipePost } from "@/models/InstagramRecipePost";
+import type {
+  RecipeStatus,
+  InstagramRecipePost,
+} from "@/models/InstagramRecipePost";
+import type { RecipeImportDocument } from "@/models/RecipeImport";
 import {
   createRecipe,
   getImport,
   getRecipe,
   updateImport,
   type RecipeDocument,
-  type RecipeImportDocument,
   type UpdateImportInput,
 } from "./firestore";
 import { scrapeInstagramPost } from "./apify";
@@ -28,9 +31,11 @@ const STAGE_PROGRESS: Record<RecipeStatus, number> = {
 };
 
 const MAX_STAGE_ATTEMPTS = 3;
-const USERNAME_METADATA_KEY = "username";
 
-type StageUpdateInput = Omit<UpdateImportInput, "status" | "stage" | "progress">;
+type StageUpdateInput = Omit<
+  UpdateImportInput,
+  "status" | "stage" | "progress"
+>;
 type StageTransitionOptions = Omit<StageUpdateInput, "metadata"> & {
   metadataPatch?: Record<string, unknown>;
 };
@@ -67,7 +72,9 @@ export {
   setFailed,
 };
 
-export async function processRecipeImport(importId: string): Promise<RecipeDocument> {
+export async function processRecipeImport(
+  importId: string
+): Promise<RecipeDocument> {
   let currentImport = await getImport(importId);
   if (!currentImport) {
     throw new Error(`Import ${importId} not found`);
@@ -80,7 +87,6 @@ export async function processRecipeImport(importId: string): Promise<RecipeDocum
     }
   }
 
-  const username = extractUsername(currentImport);
   let currentStage: RecipeStatus = currentImport.status;
   let downloadedMediaPath: string | undefined;
 
@@ -88,6 +94,9 @@ export async function processRecipeImport(importId: string): Promise<RecipeDocum
     nextStage: RecipeStatus,
     options?: StageTransitionOptions
   ) => {
+    if (!currentImport) {
+      throw new Error(`Import ${importId} not found during transition`);
+    }
     currentStage = nextStage;
     const payload = buildStageUpdatePayload(currentImport, options);
     currentImport = await STAGE_SETTERS[nextStage](importId, payload);
@@ -97,13 +106,17 @@ export async function processRecipeImport(importId: string): Promise<RecipeDocum
   try {
     await transition("scraping", {
       error: null,
-      metadataPatch: stageMetadata("scraping", { [USERNAME_METADATA_KEY]: username }),
+      metadataPatch: stageMetadata("scraping", {}),
     });
+
+    if (!currentImport) {
+      throw new Error(`Import ${importId} not found`);
+    }
 
     const scraped = await runWithRetries(
       importId,
       "scrape Instagram content",
-      () => scrapeInstagramPost({ username, url: currentImport.inputUrl })
+      () => scrapeInstagramPost({ url: currentImport!.inputUrl })
     );
 
     const mediaAsset = selectMediaAsset(scraped);
@@ -116,13 +129,10 @@ export async function processRecipeImport(importId: string): Promise<RecipeDocum
       }),
     });
 
-    const download = await runWithRetries(
-      importId,
-      "download media",
-      () =>
-        downloadMedia(mediaAsset.url, {
-          filename: buildMediaFilename(scraped, mediaAsset.mediaType),
-        })
+    const download = await runWithRetries(importId, "download media", () =>
+      downloadMedia(mediaAsset.url, {
+        filename: buildMediaFilename(scraped, mediaAsset.mediaType),
+      })
     );
 
     downloadedMediaPath = download.filePath;
@@ -188,7 +198,9 @@ export async function processRecipeImport(importId: string): Promise<RecipeDocum
     return recipeDoc;
   } catch (error) {
     const message = toErrorMessage(error);
-    console.error(`[import ${importId}] Failed at stage ${currentStage}: ${message}`);
+    console.error(
+      `[import ${importId}] Failed at stage ${currentStage}: ${message}`
+    );
     currentImport = await setFailed(
       importId,
       buildStageUpdatePayload(currentImport, {
@@ -204,7 +216,9 @@ export async function processRecipeImport(importId: string): Promise<RecipeDocum
     await cleanupMedia(downloadedMediaPath).catch((cleanupError) => {
       if (cleanupError) {
         console.warn(
-          `[import ${importId}] Failed to cleanup media: ${toErrorMessage(cleanupError)}`
+          `[import ${importId}] Failed to cleanup media: ${toErrorMessage(
+            cleanupError
+          )}`
         );
       }
     });
@@ -263,16 +277,6 @@ function stageMetadata(stage: RecipeStatus, extra?: Record<string, unknown>) {
   };
 }
 
-function extractUsername(importDoc: RecipeImportDocument) {
-  const metadataUsername = importDoc.metadata?.[USERNAME_METADATA_KEY];
-  if (typeof metadataUsername === "string" && metadataUsername.trim().length > 0) {
-    return metadataUsername.trim();
-  }
-  throw new Error(
-    `Import ${importDoc.id} is missing metadata.${USERNAME_METADATA_KEY} required for scraping`
-  );
-}
-
 function selectMediaAsset(post: InstagramRecipePost): {
   url: string;
   mediaType: MediaType;
@@ -301,7 +305,10 @@ function buildMediaFilename(post: InstagramRecipePost, mediaType: MediaType) {
   return `${code}.${extension}`;
 }
 
-function resolveGeminiFileUri(file: { uri?: string | null; name?: string | null }) {
+function resolveGeminiFileUri(file: {
+  uri?: string | null;
+  name?: string | null;
+}) {
   return file?.uri ?? file?.name ?? null;
 }
 
@@ -321,7 +328,9 @@ async function runWithRetries<T>(
     } catch (error) {
       lastError = error;
       console.warn(
-        `[import ${importId}] ${label} failed on attempt ${attempt}: ${toErrorMessage(error)}`
+        `[import ${importId}] ${label} failed on attempt ${attempt}: ${toErrorMessage(
+          error
+        )}`
       );
       if (attempt >= MAX_STAGE_ATTEMPTS) {
         break;

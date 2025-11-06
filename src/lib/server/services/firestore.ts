@@ -13,6 +13,7 @@ import type {
   InstagramRecipePost,
   RecipeStatus,
 } from "@/models/InstagramRecipePost";
+import type { RecipeImportDocument } from "@/models/RecipeImport";
 
 /**
  * Firestore schema overview
@@ -38,19 +39,6 @@ import type {
 
 const IMPORTS_COLLECTION = "imports";
 const RECIPES_COLLECTION = "recipes";
-
-export interface RecipeImportDocument {
-  id: string;
-  inputUrl: string;
-  status: RecipeStatus;
-  progress: number;
-  stage: string;
-  recipeId?: string;
-  error?: string | null;
-  metadata?: Record<string, unknown>;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 type RecipeImportFirestoreRecord = Omit<
   RecipeImportDocument,
@@ -95,32 +83,19 @@ export type RecipeUpsertInput = Partial<RecipeDocument> &
 let firestoreInstance: AdminFirestore | null = null;
 
 function resolveServiceAccount(): ServiceAccount | undefined {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    return normalizeServiceAccount(
-      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    );
-  }
+  const credentialsPath = path.resolve(
+    process.cwd(),
+    "firebase",
+    "serviceAccountKey.json"
+  );
 
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!credentialsPath) {
+  if (!fs.existsSync(credentialsPath)) {
     return undefined;
   }
 
-  const absolutePath = path.isAbsolute(credentialsPath)
-    ? credentialsPath
-    : path.resolve(process.cwd(), credentialsPath);
+  const fileContent = fs.readFileSync(credentialsPath, "utf-8");
+  const account = JSON.parse(fileContent) as ServiceAccount;
 
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(
-      `GOOGLE_APPLICATION_CREDENTIALS file not found at ${absolutePath}`
-    );
-  }
-
-  const fileContent = fs.readFileSync(absolutePath, "utf-8");
-  return normalizeServiceAccount(JSON.parse(fileContent));
-}
-
-function normalizeServiceAccount(account: ServiceAccount): ServiceAccount {
   if (account.privateKey) {
     return { ...account, privateKey: account.privateKey.replace(/\\n/g, "\n") };
   }
@@ -134,9 +109,20 @@ function initializeFirebaseAdmin(): App {
   }
 
   const serviceAccount = resolveServiceAccount();
-  return serviceAccount
-    ? initializeApp({ credential: cert(serviceAccount) })
-    : initializeApp();
+
+  if (serviceAccount) {
+    return initializeApp({ credential: cert(serviceAccount) });
+  }
+
+  // Fallback: use project ID from environment if no service account
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) {
+    throw new Error(
+      "Firebase Admin initialization failed: Either GOOGLE_APPLICATION_CREDENTIALS, FIREBASE_SERVICE_ACCOUNT, or NEXT_PUBLIC_FIREBASE_PROJECT_ID must be configured"
+    );
+  }
+
+  return initializeApp({ projectId });
 }
 
 export function getFirestore(): AdminFirestore {
@@ -174,12 +160,12 @@ export async function createImport(
     status: input.status ?? "queued",
     stage: input.stage ?? "queued",
     progress: Math.max(0, Math.min(100, input.progress ?? 0)),
-    recipeId: input.recipeId,
+    ...(input.recipeId !== undefined && { recipeId: input.recipeId }),
     error: input.error ?? null,
     metadata: input.metadata ?? {},
     createdAt: now,
     updatedAt: now,
-  };
+  } as RecipeImportFirestoreRecord;
 
   await docRef.set(payload);
   const snapshot = await docRef.get();
@@ -235,12 +221,7 @@ export async function createRecipe(
     ? collection.doc(input.id)
     : collection.doc();
   const now = Timestamp.now();
-  const {
-    createdAt,
-    updatedAt: _ignoredUpdatedAt,
-    id: _ignoredId,
-    ...rest
-  } = input;
+  const { createdAt, ...rest } = input;
 
   if (!rest.inputUrl) {
     throw new Error("createRecipe: inputUrl is required");
@@ -269,13 +250,50 @@ export async function getRecipe(id: string): Promise<RecipeDocument | null> {
   return deserializeRecipe(doc);
 }
 
-export async function listRecipes(limit = 20): Promise<RecipeDocument[]> {
-  const snapshot = await getRecipesCollection()
-    .orderBy("createdAt", "desc")
-    .limit(limit)
-    .get();
+export async function deleteRecipe(id: string): Promise<void> {
+  if (!id) {
+    throw new Error("deleteRecipe: id is required");
+  }
+  await getRecipesCollection().doc(id).delete();
+}
 
-  return snapshot.docs.map((doc) => deserializeRecipe(doc));
+type ListRecipesOptions = {
+  limit?: number;
+  status?: RecipeStatus;
+  sortDirection?: "asc" | "desc";
+  cursor?: string;
+};
+
+export async function listRecipes(options?: ListRecipesOptions): Promise<{
+  recipes: RecipeDocument[];
+  nextCursor: string | null;
+}> {
+  const limit = Math.min(Math.max(options?.limit ?? 20, 1), 50);
+  const sortDirection = options?.sortDirection === "asc" ? "asc" : "desc";
+  let query: FirebaseFirestore.Query<RecipeFirestoreRecord> =
+    getRecipesCollection().orderBy("createdAt", sortDirection);
+
+  if (options?.status) {
+    query = query.where("status", "==", options.status);
+  }
+
+  if (options?.cursor) {
+    const cursorDate = new Date(options.cursor);
+    if (!Number.isNaN(cursorDate.getTime())) {
+      query = query.startAfter(Timestamp.fromDate(cursorDate));
+    }
+  }
+
+  query = query.limit(limit);
+  const snapshot = await query.get();
+  const recipes = snapshot.docs.map((doc) => deserializeRecipe(doc));
+  const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+  const nextCursor =
+    snapshot.size === limit && lastDoc?.data()?.createdAt
+      ? toIsoString(lastDoc.data()!.createdAt) ?? null
+      : null;
+
+  return { recipes, nextCursor };
 }
 
 function deserializeImport(

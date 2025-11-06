@@ -59,7 +59,9 @@ export function AddLinkModal({
       try {
         setError(null);
         setIsSubmittingInternal(true);
-        await onSubmit(url.trim());
+        await onSubmit({
+          url: url.trim(),
+        });
         resetState();
         onOpenChange(false);
       } catch (err) {

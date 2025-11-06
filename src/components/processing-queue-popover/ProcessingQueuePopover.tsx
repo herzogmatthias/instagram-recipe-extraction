@@ -100,6 +100,11 @@ export function ProcessingQueuePopover({
                       </div>
                     </div>
                     <Progress value={item.progress} className="h-1.5" />
+                    {item.error && item.status === "failed" && (
+                      <p className="mt-2 text-xs text-destructive line-clamp-2">
+                        {item.error}
+                      </p>
+                    )}
                     <p className="mt-2 text-[11px] text-foreground/60">
                       Added {formatCreatedAt(item.createdAt)}
                     </p>

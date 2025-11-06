@@ -6,6 +6,8 @@ import {
   type RecipeValidationIssue,
   validateRecipeData,
 } from "@/lib/shared/utils/recipeValidator";
+import fs from "node:fs";
+import path from "node:path";
 
 export type GeminiUploadErrorCode =
   | "MISSING_API_KEY"
@@ -82,9 +84,9 @@ export class GeminiExtractionError extends Error {
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
-const DEFAULT_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_RECIPE_MODEL =
-  process.env.GEMINI_RECIPE_MODEL ?? "gemini-2.5-pro";
+  process.env.GEMINI_RECIPE_MODEL ?? "gemini-2.5-flash";
 const DEFAULT_EXTRACTION_TEMPERATURE = Number(
   process.env.GEMINI_TEMPERATURE ?? 0.2
 );
@@ -225,7 +227,7 @@ export async function extractRecipe(
         config: {
           temperature: DEFAULT_EXTRACTION_TEMPERATURE,
           responseMimeType: "application/json",
-          maxOutputTokens: 2048,
+          maxOutputTokens: 10000,
           responseSchema: recipeResponseSchema,
         },
       });
@@ -319,6 +321,7 @@ function extractResponseText(response: { text?: string }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseRecipePayload(rawText: string): any {
   if (!rawText || rawText.trim().length === 0) {
     throw new GeminiExtractionError("NO_RECIPE", "Gemini response was empty");
@@ -327,14 +330,36 @@ function parseRecipePayload(rawText: string): any {
   try {
     return JSON.parse(rawText);
   } catch (error) {
+    // Save the invalid response for debugging
+    // const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // const debugPath = path.join(
+    //   ".",
+    //   "tmp",
+    //   `gemini-response-${timestamp}.json`
+    // );
+
+    // try {
+    //   const dir = path.dirname(debugPath);
+    //   if (!fs.existsSync(dir)) {
+    //     fs.mkdirSync(dir, { recursive: true });
+    //   }
+    //   fs.writeFileSync(debugPath, rawText, "utf-8");
+    //   console.error(`[Gemini] Invalid JSON saved to: ${debugPath}`);
+    //   console.error(`[Gemini] Raw response length: ${rawText.length} chars`);
+    //   console.error(`[Gemini] First 500 chars: ${rawText.substring(0, 500)}`);
+    // } catch (writeError) {
+    //   console.error("[Gemini] Failed to save debug response:", writeError);
+    // }
+
     throw new GeminiExtractionError(
       "INVALID_JSON",
-      "Gemini returned invalid JSON",
+      `Gemini returned invalid JSON`,
       { cause: error }
     );
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pickRecipeCandidate(payload: any) {
   if (!payload) {
     throw new GeminiExtractionError(

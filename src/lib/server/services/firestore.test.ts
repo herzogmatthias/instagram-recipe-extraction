@@ -244,7 +244,7 @@ describe("firestore service", () => {
       }),
     );
 
-    const all = await listRecipes();
+    const { recipes: all } = await listRecipes();
     expect(all).toHaveLength(2);
     expect(all[0]?.caption).toBe("Recipe B");
     expect(all[1]?.caption).toBe("Recipe A");

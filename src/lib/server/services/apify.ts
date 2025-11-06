@@ -12,7 +12,6 @@ export type ScrapeErrorCode =
   | "TRANSIENT_ERROR";
 
 export interface ScrapeInstagramPostParams {
-  username: string;
   url: string;
 }
 
@@ -40,7 +39,11 @@ let apifyClientInstance: ApifyClient | null = null;
 export class InstagramScrapeError extends Error {
   readonly code: ScrapeErrorCode;
 
-  constructor(code: ScrapeErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: ScrapeErrorCode,
+    message: string,
+    options?: { cause?: unknown }
+  ) {
     super(message);
     this.code = code;
     this.name = "InstagramScrapeError";
@@ -79,48 +82,45 @@ export async function scrapeInstagramPost(
   const normalizedUrl = normalizeInstagramUrl(params.url);
   const contentType = detectPostType(normalizedUrl);
   const actorId = ACTOR_BY_TYPE[contentType];
-  const runInput = buildActorInput(params.username);
+  const input = buildActorInput(normalizedUrl);
 
-  const rawPost = await withRetry(
-    async () => {
-      const client = getApifyClient();
+  const rawPost = await withRetry(async () => {
+    const client = getApifyClient();
 
-      let run;
-      try {
-        run = await client.actor(actorId).call({ runInput });
-      } catch (error) {
-        handleApifyError(error);
-      }
+    let run;
+    try {
+      run = await client.actor(actorId).call(input);
+    } catch (error) {
+      handleApifyError(error);
+    }
 
-      if (!run?.defaultDatasetId) {
-        throw new InstagramScrapeError(
-          "TRANSIENT_ERROR",
-          "Apify run did not provide a dataset identifier"
-        );
-      }
+    if (!run?.defaultDatasetId) {
+      throw new InstagramScrapeError(
+        "TRANSIENT_ERROR",
+        "Apify run did not provide a dataset identifier"
+      );
+    }
 
-      let datasetItems;
-      try {
-        datasetItems = await client.dataset(run.defaultDatasetId).listItems({
-          limit: 1,
-          clean: true,
-        });
-      } catch (error) {
-        handleApifyError(error);
-      }
+    let datasetItems;
+    try {
+      datasetItems = await client.dataset(run.defaultDatasetId).listItems({
+        limit: 1,
+        clean: true,
+      });
+    } catch (error) {
+      handleApifyError(error);
+    }
 
-      const items = datasetItems?.items ?? [];
-      if (!items.length) {
-        throw new InstagramScrapeError(
-          "PRIVATE_POST",
-          "Apify returned no data. The Instagram post might be private or unavailable."
-        );
-      }
+    const items = datasetItems?.items ?? [];
+    if (!items.length) {
+      throw new InstagramScrapeError(
+        "PRIVATE_POST",
+        "Apify returned no data. The Instagram post might be private or unavailable."
+      );
+    }
 
-      return items[0] as RawApifyInstagramPost;
-    },
-    options
-  );
+    return items[0] as RawApifyInstagramPost;
+  }, options);
 
   return transformApifyItem(rawPost, normalizedUrl, contentType);
 }
@@ -135,22 +135,31 @@ function normalizeInstagramUrl(rawUrl: string): string {
   try {
     parsed = new URL(candidate);
   } catch {
-    throw new InstagramScrapeError("INVALID_URL", `Invalid Instagram URL: ${rawUrl}`);
+    throw new InstagramScrapeError(
+      "INVALID_URL",
+      `Invalid Instagram URL: ${rawUrl}`
+    );
   }
 
   if (!parsed.hostname.includes("instagram.")) {
-    throw new InstagramScrapeError("INVALID_URL", "URL must point to instagram.com");
+    throw new InstagramScrapeError(
+      "INVALID_URL",
+      "URL must point to instagram.com"
+    );
   }
 
   parsed.hash = "";
   return parsed.toString();
 }
 
-function buildActorInput(username: string) {
-  if (!username || !username.trim()) {
-    throw new InstagramScrapeError("MISSING_USERNAME", "Username is required for Apify runs");
+function buildActorInput(postUrl: string) {
+  if (!postUrl || !postUrl.trim()) {
+    throw new InstagramScrapeError(
+      "INVALID_URL",
+      "Post URL is required for Apify runs"
+    );
   }
-  return { usernames: [username], resultsLimit: 1 } as const;
+  return { username: [postUrl], resultsLimit: 1 } as const;
 }
 
 async function withRetry<T>(
@@ -158,7 +167,8 @@ async function withRetry<T>(
   options?: ScrapeInstagramPostOptions
 ): Promise<T> {
   const maxRetries = options?.maxRetries ?? DEFAULT_RETRY.maxRetries;
-  const multiplier = options?.backoffMultiplier ?? DEFAULT_RETRY.backoffMultiplier;
+  const multiplier =
+    options?.backoffMultiplier ?? DEFAULT_RETRY.backoffMultiplier;
   let delay = options?.initialDelayMs ?? DEFAULT_RETRY.initialDelayMs;
   let attempt = 0;
 
@@ -195,7 +205,11 @@ function handleApifyError(error: unknown): never {
 
   if (error instanceof ApifyApiError) {
     if (error.statusCode === 429) {
-      throw new InstagramScrapeError("RATE_LIMITED", "Apify rate limit exceeded", { cause: error });
+      throw new InstagramScrapeError(
+        "RATE_LIMITED",
+        "Apify rate limit exceeded",
+        { cause: error }
+      );
     }
 
     if (error.statusCode === 403) {
@@ -230,7 +244,9 @@ function handleApifyError(error: unknown): never {
   );
 }
 
-type RawApifyInstagramPost = Partial<Omit<InstagramRecipePost, "recipe_data">> & {
+type RawApifyInstagramPost = Partial<
+  Omit<InstagramRecipePost, "recipe_data">
+> & {
   short_code?: string;
 };
 
@@ -240,11 +256,17 @@ function transformApifyItem(
   contentType: InstagramContentType
 ): InstagramRecipePost {
   if (!raw) {
-    throw new InstagramScrapeError("TRANSIENT_ERROR", "Apify returned an empty record");
+    throw new InstagramScrapeError(
+      "TRANSIENT_ERROR",
+      "Apify returned an empty record"
+    );
   }
 
   const shortCode =
-    raw.shortCode ?? raw.short_code ?? raw.id ?? extractShortCodeFromUrl(inputUrl);
+    raw.shortCode ??
+    raw.short_code ??
+    raw.id ??
+    extractShortCodeFromUrl(inputUrl);
   if (!shortCode) {
     throw new InstagramScrapeError(
       "TRANSIENT_ERROR",
