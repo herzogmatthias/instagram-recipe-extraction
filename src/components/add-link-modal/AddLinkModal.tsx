@@ -13,18 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface AddLinkModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (instagramUrl: string) => Promise<void> | void;
-  isSubmitting?: boolean;
-  className?: string;
-}
-
-const INSTAGRAM_URL_REGEX =
-  /^(https?:\/\/)?(www\.)?instagram\.com\/(p|reel|tv)\/[^\s/?#]+/i;
+import { cn } from "@/lib/shared/utils/utils";
+import { AddLinkModalProps } from "./AddLinkModal.types";
+import { getHelperText, getValidationError } from "./AddLinkModal.utils";
 
 export function AddLinkModal({
   open,
@@ -45,18 +36,6 @@ export function AddLinkModal({
     setIsSubmittingInternal(false);
   }, []);
 
-  const validateUrl = useCallback((value: string) => {
-    if (!value.trim()) {
-      return "Please paste an Instagram post URL.";
-    }
-
-    if (!INSTAGRAM_URL_REGEX.test(value.trim())) {
-      return "Enter a valid Instagram post, reel, or IGTV link.";
-    }
-
-    return null;
-  }, []);
-
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (!nextOpen) {
@@ -71,7 +50,7 @@ export function AddLinkModal({
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
 
-      const validationError = validateUrl(url);
+      const validationError = getValidationError(url);
       if (validationError) {
         setError(validationError);
         return;
@@ -93,18 +72,10 @@ export function AddLinkModal({
         setIsSubmittingInternal(false);
       }
     },
-    [onSubmit, onOpenChange, resetState, url, validateUrl]
+    [onSubmit, onOpenChange, resetState, url]
   );
 
-  const helperText = useMemo(() => {
-    if (error) {
-      return error;
-    }
-    if (url.trim()) {
-      return "We'll pull the caption, media, and comments automatically.";
-    }
-    return "Paste any Instagram post URL. We'll take it from there.";
-  }, [error, url]);
+  const helperText = useMemo(() => getHelperText(error, url), [error, url]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -186,3 +157,5 @@ export function AddLinkModal({
     </Dialog>
   );
 }
+
+export type { AddLinkModalProps } from "./AddLinkModal.types";

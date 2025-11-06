@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,52 +10,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { RecipeStatus } from "@/models/InstagramRecipePost";
+import { cn } from "@/lib/shared/utils/utils";
 import { X, RotateCcw } from "lucide-react";
-
-export interface ProcessingQueueItem {
-  id: string;
-  url: string;
-  status: RecipeStatus;
-  progress: number;
-  createdAt: string;
-  displayUrl?: string | null;
-  title?: string;
-}
-
-const STATUS_LABELS: Record<RecipeStatus, string> = {
-  queued: "Queued",
-  scraping: "Scraping",
-  downloading_media: "Downloading",
-  uploading_media: "Uploading",
-  extracting: "Extracting",
-  ready: "Ready",
-  failed: "Failed",
-};
-
-const STATUS_BADGE_VARIANT: Record<
-  RecipeStatus,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  queued: "outline",
-  scraping: "default",
-  downloading_media: "default",
-  uploading_media: "default",
-  extracting: "default",
-  ready: "secondary",
-  failed: "destructive",
-};
-
-interface ProcessingQueuePopoverProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  items: ProcessingQueueItem[];
-  trigger: ReactNode;
-  onViewHistory?: () => void;
-  onRemoveItem?: (id: string) => void;
-  onRetryItem?: (id: string) => void;
-}
+import type { ProcessingQueuePopoverProps } from "./ProcessingQueuePopover.types";
+import {
+  STATUS_BADGE_VARIANT,
+  STATUS_LABELS,
+  formatCreatedAt,
+} from "./ProcessingQueuePopover.utils";
 
 export function ProcessingQueuePopover({
   open,
@@ -139,11 +101,7 @@ export function ProcessingQueuePopover({
                     </div>
                     <Progress value={item.progress} className="h-1.5" />
                     <p className="mt-2 text-[11px] text-foreground/60">
-                      Added{" "}
-                      {new Date(item.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      Added {formatCreatedAt(item.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -195,3 +153,8 @@ export function ProcessingQueuePopover({
     </Popover>
   );
 }
+
+export type {
+  ProcessingQueueItem,
+  ProcessingQueuePopoverProps,
+} from "./ProcessingQueuePopover.types";

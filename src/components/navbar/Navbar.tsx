@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils/utils";
 import {
   Moon,
   Sun,
@@ -21,22 +21,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  ProcessingQueuePopover,
-  type ProcessingQueueItem,
-} from "./ProcessingQueuePopover";
-
-interface NavbarProps {
-  className?: string;
-  onAddRecipe?: () => void;
-  onOpenFilters?: () => void;
-  activeFilterCount?: number;
-  processingItems: ProcessingQueueItem[];
-  processingOpen: boolean;
-  onProcessingOpenChange: (open: boolean) => void;
-  onRemoveFromQueue?: (id: string) => void;
-  onRetryFromQueue?: (id: string) => void;
-}
+import { ProcessingQueuePopover } from "../processing-queue-popover/ProcessingQueuePopover";
+import type { NavbarProps } from "./Navbar.types";
+import { getFilterBadgeValue, getProcessingBadgeLabel } from "./Navbar.utils";
 
 export const Navbar: React.FC<NavbarProps> = ({
   onAddRecipe,
@@ -54,13 +41,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     setTheme(theme === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
 
-  const itemCount = processingItems.length;
-  const hasItems = itemCount > 0;
-  const badgeLabel = hasItems
-    ? itemCount > 9
-      ? "9+"
-      : itemCount.toString()
-    : null;
+  const badgeLabel = getProcessingBadgeLabel(processingItems.length);
+  const mobileFilterBadge = getFilterBadgeValue(activeFilterCount);
 
   const processingTrigger = (
     <button
@@ -146,9 +128,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Filter className="h-5 w-5" />
                 <span className="sr-only">Filters</span>
-                {activeFilterCount > 0 && (
+                {mobileFilterBadge !== null && (
                   <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold leading-none text-primary-foreground">
-                    {Math.min(activeFilterCount, 9)}
+                    {mobileFilterBadge}
                   </span>
                 )}
               </button>
@@ -231,5 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     </nav>
   );
 };
+
+export type { NavbarProps } from "./Navbar.types";
 
 export default Navbar;

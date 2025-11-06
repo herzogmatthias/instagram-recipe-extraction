@@ -1,0 +1,250 @@
+npm verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+npm info using npm@10.9.2
+npm info using node@v22.14.0
+npm verbose title npm test src/components/recipe-card/RecipeCard.test.tsx
+npm verbose argv "test" "src/components/recipe-card/RecipeCard.test.tsx" "--loglevel" "verbose"
+npm verbose logfile logs-max:10 dir:C:\Users\darks\AppData\Local\npm-cache\_logs\2025-11-06T11_25_52_511Z-
+npm verbose logfile C:\Users\darks\AppData\Local\npm-cache\_logs\2025-11-06T11_25_52_511Z-debug-0.log
+
+> instagram-recipe-extraction@0.1.0 test
+> jest src/components/recipe-card/RecipeCard.test.tsx
+
+  console.error
+    Received `true` for a non-boolean attribute `fill`.
+    
+    If you want to write it to the DOM, pass a string instead: fill="true" or fill={value.toString()}.
+
+    [0m [90m 62 |[39m     it([32m"should render recipe card with all elements"[39m[33m,[39m () [33m=>[39m {
+     [90m 63 |[39m       [36mconst[39m recipe [33m=[39m createMockInstagramRecipePost()[33m;[39m
+    [31m[1m>[22m[39m[90m 64 |[39m       [36mconst[39m { container } [33m=[39m render([33m<[39m[33mRecipeCard[39m recipe[33m=[39m{recipe} [33m/[39m[33m>[39m)[33m;[39m
+     [90m    |[39m                                   [31m[1m^[22m[39m
+     [90m 65 |[39m
+     [90m 66 |[39m       [36mconst[39m card [33m=[39m container[33m.[39mquerySelector([32m".group"[39m)[33m;[39m
+     [90m 67 |[39m       expect(card)[33m.[39mtoBeInTheDocument()[33m;[39m[0m
+
+      at validateProperty (node_modules/react-dom/cjs/react-dom-client.development.js:3070:27)
+      at warnUnknownProperties (node_modules/react-dom/cjs/react-dom-client.development.js:3146:9)
+      at validatePropertiesInDevelopment (node_modules/react-dom/cjs/react-dom-client.development.js:19868:9)
+      at setInitialProperties (node_modules/react-dom/cjs/react-dom-client.development.js:20491:7)
+      at completeWork (node_modules/react-dom/cjs/react-dom-client.development.js:12662:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at completeUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17777:19)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17658:11)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16504:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:47:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:190:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:292:10)
+      at Object.<anonymous> (src/components/recipe-card/RecipeCard.test.tsx:64:35)
+
+FAIL src/components/recipe-card/RecipeCard.test.tsx
+  RecipeCard
+    Basic rendering
+      ÔêÜ should render recipe card with all elements (169 ms)
+      ÔêÜ should display recipe title (15 ms)
+      ÔêÜ should display meta pills when available (19 ms)
+      ÔêÜ should display up to 3 tags (27 ms)
+      ÔêÜ renders status chip when recipe provides a status (17 ms)
+      ÔêÜ renders error badge with tooltip when recipe failed (15 ms)
+      ÔêÜ shows placeholder initial when there is no cover image (12 ms)
+      ÔêÜ shows progress bar when recipe is processing (15 ms)
+    Action buttons
+      ÔêÜ should show action buttons (15 ms)
+      ÔêÜ should disable open button when recipe data is missing (14 ms)
+      ÔêÜ should enable open button when status is ready (17 ms)
+      ÔêÜ should disable copy ingredients when no ingredients (12 ms)
+      ÔêÜ should disable copy steps when no steps (13 ms)
+      ÔêÜ should disable export when no recipe_data (11 ms)
+    Card action behaviors
+      ÔêÜ should copy ingredients to clipboard (20 ms)
+      ÔêÜ should copy steps to clipboard (17 ms)
+      ÔêÜ should export recipe JSON (15 ms)
+      ÔêÜ should navigate to recipe detail when open button is clicked (12 ms)
+      ÔêÜ should open instagram post from menu (230 ms)
+      ├ù should delete recipe when confirmed (1348 ms)
+    Visual states
+      ├ù should show placeholder when no displayUrl (27 ms)
+      ÔêÜ should apply hover classes (15 ms)
+      ÔêÜ should show failed state with warning border (15 ms)
+      ÔêÜ should not render progress indicators for ready recipes (15 ms)
+    Accessibility
+      ÔêÜ should be keyboard accessible (12 ms)
+      ÔêÜ should handle Enter key press (13 ms)
+      ÔêÜ should handle Space key press (11 ms)
+      ÔêÜ should have focus-visible ring (11 ms)
+    Interactions
+      ÔêÜ should call onClick when card is clicked (14 ms)
+      ÔêÜ should stop propagation on action button clicks (12 ms)
+    Edge cases
+      ÔêÜ should handle missing data gracefully (11 ms)
+      ÔêÜ should handle empty tags array (11 ms)
+      ÔêÜ should handle no meta pills (11 ms)
+      ÔêÜ keeps last good title when recipe data becomes unavailable (19 ms)
+      ÔêÜ keeps last good cover when displayUrl is lost (21 ms)
+
+  ÔùÅ RecipeCard ÔÇ║ Card action behaviors ÔÇ║ should delete recipe when confirmed
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "Recipe deleted."
+
+    Number of calls: 0
+
+    Ignored nodes: comments, script, style
+    <html>
+      <head />
+      <body
+        data-scroll-locked="1"
+        style="pointer-events: none;"
+      >
+        <span
+          aria-hidden="true"
+          data-aria-hidden="true"
+          data-radix-focus-guard=""
+          style="outline: none; opacity: 0; position: fixed; pointer-events: none;"
+          tabindex="0"
+        />
+        <div
+          aria-hidden="true"
+          data-aria-hidden="true"
+        >
+          <div
+            class="bg-card text-card-foreground border shadow-sm group relative flex h-full flex-col overflow-hidden rounded-lg transition-all duration-200 p-0 gap-0 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
+            data-slot="card"
+            role="button"
+            tabindex="0"
+          >
+            <div
+              data-radix-aspect-ratio-wrapper=""
+              style="position: relative; width: 100%; padding-bottom: 66.66666666666667%;"
+            >
+              <div
+                class="relative overflow-hidden bg-muted"
+                data-slot="aspect-ratio"
+                style="position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px;"
+              >
+                <img
+                  alt="Test Recipe"
+                  class="object-cover transition-transform duration-200 group-hover:scale-105"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  src="https://example.com/image.jpg"
+                />
+                <div
+                  class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 to-transparent"
+                />
+                <div
+                  class="absolute inset-x-0 bottom-0 px-5 pb-4 pt-10"
+                >
+                  <h3
+                    class="text-lg font-semibold leading-snug line-clamp-2 font-heading text-white [text-shadow:_0_1px_8px_rgb(0_0_0_/_80%)]"
+                  >
+                    Test Recipe
+                  </h3>
+                </div>
+              </div>
+            </div>
+            <div
+              class="flex flex-1 flex-col gap-4 px-6 py-5"
+              data-slot="card-content"
+            >
+              <div
+                aria-label="meta-pills"
+                class="flex flex-wrap gap-2"
+              >
+                <span
+                  class="inline-flex items-center justify-center border w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden border-transparent [a&]:hover:bg-secondary/90 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-foreground/80"
+                  data-slot="badge"
+                >
+                  30 min
+                </span>
+                <span
+                  class="inline-flex items-center justify-center border w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden border-transparent [a&]:hover:bg-secondary/90 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-foreground/80"
+                  data-slot="badge"
+                >
+                  Easy
+                </span>
+                <span
+                  class="inline-flex items-center justify-center border w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden border-transparent [a&]:hover:bg-secondary/90 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-foreground/80"
+                  data-slot="badge"
+                >
+                  Italian
+                </span>
+                <span
+                  class="inline-flex items-center justify-center border w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden border-transparent [a&]:hover:bg-secondary/90 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-foreground/80"
+                  data-slot="badge"
+                >
+                  500 kcal ÔÇó 40/10/50
+                </span>
+              </div>
+              <div
+                aria-label="recipe-tags"
+                class="flex flex-wrap gap-2"
+              >
+                <span
+                  class="inline-flex items-center justify-center border w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden [a&]:hover:bg-accent [a&]:hover:text-accent-foreground rounded-full px-3 py-1 text-xs font-medium text-foreground/80"
+                  data-slot="badge"
+                >
+                  healthy
+                </span>
+                <span
+                  class="inline-flex items-center justify-center border w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destruct...
+
+      318 |       await waitFor(() => {
+      319 |         expect(onDeleted).toHaveBeenCalledWith(recipe.id);
+    > 320 |         expect(toastSuccessMock).toHaveBeenCalledWith("Recipe deleted.");
+          |                                  ^
+      321 |       });
+      322 |     });
+      323 |   });
+
+      at toHaveBeenCalledWith (src/components/recipe-card/RecipeCard.test.tsx:320:34)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+  ÔùÅ RecipeCard ÔÇ║ Visual states ÔÇ║ should show placeholder when no displayUrl
+
+    TypeError: Cannot read properties of undefined (reading 'color')
+
+      12 |       className={cn(
+      13 |         "text-xs font-medium border px-3 py-1 rounded-full",
+    > 14 |         config.color,
+         |                ^
+      15 |         config.bgColor,
+      16 |         className
+      17 |       )}
+
+      at color (src/components/status-chip/StatusChip.tsx:14:16)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:47:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:190:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:292:10)
+      at Object.<anonymous> (src/components/recipe-card/RecipeCard.test.tsx:342:13)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 33 passed, 35 total
+Snapshots:   0 total
+Time:        4.069 s
+Ran all test suites matching src/components/recipe-card/RecipeCard.test.tsx.
+npm verbose cwd C:\Users\darks\Documents\instagram-recipe-extraction
+npm verbose os Windows_NT 10.0.26200
+npm verbose node v22.14.0
+npm verbose npm  v10.9.2
+npm verbose exit 1
+npm verbose code 1

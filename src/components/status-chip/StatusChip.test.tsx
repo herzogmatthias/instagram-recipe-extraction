@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { StatusChip, RecipeStatus } from '../StatusChip';
+import { StatusChip, RecipeStatus } from './StatusChip';
 import { describe, it, expect } from '@jest/globals';
 
 describe('StatusChip', () => {

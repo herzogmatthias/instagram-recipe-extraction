@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import Navbar from "@/components/Navbar";
-import { RecipeCard } from "@/components/RecipeCard";
-import { FilterBar, FilterState } from "@/components/FilterBar";
-import { AddLinkModal } from "@/components/AddLinkModal";
+import Navbar from "@/components/navbar/Navbar";
+import { RecipeCard } from "@/components/recipe-card/RecipeCard";
+import { FilterBar, FilterState } from "@/components/filter-bar/FilterBar";
+import { AddLinkModal } from "@/components/add-link-modal/AddLinkModal";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
-import { useRecipeData } from "@/lib/hooks/useRecipeData";
-import { useRecipePolling } from "@/lib/hooks/useRecipePolling";
-import { useProcessingQueue } from "@/lib/hooks/useProcessingQueue";
+import { useRecipeData } from "@/lib/client/hooks/useRecipeData";
+import { useRecipePolling } from "@/lib/client/hooks/useRecipePolling";
+import { useProcessingQueue } from "@/lib/client/hooks/useProcessingQueue";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils/utils";
 
 import {
   InstagramRecipePost,
@@ -29,10 +29,11 @@ import {
 
 function RecipeCardSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <Skeleton className="aspect-[3/2] rounded-lg" />
-      <Skeleton className="h-4 w-3/4 rounded" />
+      <Skeleton className="h-5 w-3/4 rounded" />
       <Skeleton className="h-4 w-2/3 rounded" />
+      <Skeleton className="h-4 w-1/2 rounded" />
     </div>
   );
 }
@@ -260,6 +261,10 @@ export default function Home() {
     filters.selectedCuisines.length +
     filters.selectedTags.length;
 
+  const handleRecipeDeleted = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
   return (
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" />
@@ -303,6 +308,17 @@ export default function Home() {
             </div>
           )}
 
+          {loading && (
+            <div
+              className="mx-auto w-full max-w-6xl grid gap-12 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:gap-16"
+              data-testid="loading-state"
+            >
+              {Array.from({ length: 8 }).map((_, index) => (
+                <RecipeCardSkeleton key={index} />
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-col gap-14 lg:grid lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] lg:items-start lg:gap-16 2xl:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
             {showFilter && (
               <aside
@@ -326,86 +342,80 @@ export default function Home() {
                 !showFilter && "mx-auto w-full max-w-4xl"
               )}
             >
-              {loading && (
-                <div
-                  className="grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                  data-testid="loading-state"
-                >
-                  {Array.from({ length: 8 }).map((_, index) => (
-                    <RecipeCardSkeleton key={index} />
-                  ))}
-                </div>
-              )}
+              {!loading && (
+                <>
+                  {showNoResults && (
+                    <div
+                      className="mx-auto w-full max-w-3xl rounded-2xl border-2 border-dashed border-border bg-card/90 p-12 text-center"
+                      data-testid="no-results-state"
+                    >
+                      <div className="mb-6 space-y-3">
+                        <h3 className="text-xl font-heading font-semibold text-foreground">
+                          No recipes found
+                        </h3>
+                        <p className="text-base text-foreground/60">
+                          Try loosening your filters or search query to see more
+                          of your saved recipes.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setFilters({
+                            searchQuery: "",
+                            selectedCuisines: [],
+                            selectedTags: [],
+                          });
+                        }}
+                        data-testid="clear-filters-button"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  )}
 
-              {showNoResults && (
-                <div
-                  className="mx-auto w-full max-w-3xl rounded-2xl border-2 border-dashed border-border bg-card/90 p-12 text-center"
-                  data-testid="no-results-state"
-                >
-                  <div className="mb-6 space-y-3">
-                    <h3 className="text-xl font-heading font-semibold text-foreground">
-                      No recipes found
-                    </h3>
-                    <p className="text-base text-foreground/60">
-                      Try loosening your filters or search query to see more of
-                      your saved recipes.
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFilters({
-                        searchQuery: "",
-                        selectedCuisines: [],
-                        selectedTags: [],
-                      });
-                    }}
-                    data-testid="clear-filters-button"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
+                  {showEmptyState && (
+                    <div
+                      className="mx-auto w-full max-w-3xl rounded-2xl border-2 border-dashed border-border bg-card/90 p-12 text-center"
+                      data-testid="empty-state"
+                    >
+                      <div className="mb-8 space-y-3">
+                        <h2 className="text-2xl font-heading font-bold text-foreground md:text-3xl">
+                          No recipes yet
+                        </h2>
+                        <p className="text-base text-foreground/60">
+                          Add your first Instagram recipe post to kick off your
+                          personalized cookbook.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleAddClick}
+                        size="lg"
+                        className="gap-2"
+                        data-testid="empty-state-add-button"
+                      >
+                        <Plus className="h-5 w-5" />
+                        Add Your First Recipe
+                      </Button>
+                    </div>
+                  )}
 
-              {showEmptyState && (
-                <div
-                  className="mx-auto w-full max-w-3xl rounded-2xl border-2 border-dashed border-border bg-card/90 p-12 text-center"
-                  data-testid="empty-state"
-                >
-                  <div className="mb-8 space-y-3">
-                    <h2 className="text-2xl font-heading font-bold text-foreground md:text-3xl">
-                      No recipes yet
-                    </h2>
-                    <p className="text-base text-foreground/60">
-                      Add your first Instagram recipe post to kick off your
-                      personalized cookbook.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleAddClick}
-                    size="lg"
-                    className="gap-2"
-                    data-testid="empty-state-add-button"
-                  >
-                    <Plus className="h-5 w-5" />
-                    Add Your First Recipe
-                  </Button>
-                </div>
-              )}
-
-              {showGrid && (
-                <div
-                  className="grid grid-cols-1 gap-12 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 2xl:gap-16"
-                  data-testid="recipe-grid"
-                >
-                  {filteredRecipes.map((recipe) => (
-                    <RecipeCard
-                      key={recipe.id}
-                      recipe={recipe}
-                      data-testid={`recipe-card-${recipe.id}`}
-                    />
-                  ))}
-                </div>
+                  {showGrid && (
+                    <div
+                      className="grid grid-cols-1 gap-12 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 2xl:gap-16"
+                      data-testid="recipe-grid"
+                    >
+                      {filteredRecipes.map((recipe) => (
+                        <RecipeCard
+                          key={recipe.id}
+                          recipe={recipe}
+                          onDeleted={handleRecipeDeleted}
+                          data-testid={`recipe-card-${recipe.id}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </section>
           </div>

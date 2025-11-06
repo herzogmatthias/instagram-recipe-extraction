@@ -110,31 +110,30 @@
   - [x] 6.7 Handle submission errors gracefully
   - [x] 6.8 Write unit tests for `AddLinkModal` covering validation and submission
 
-- [ ] **7.0 Status Polling & Live Updates**
+- [x] **7.0 Status Polling & Live Updates**
 
-  - [ ] 7.1 Create `useRecipePolling` hook for non-terminal status recipes
-  - [ ] 7.2 Implement polling logic with exponential backoff
-  - [ ] 7.3 Update popover item when status transitions occur
-  - [ ] 7.4 Show toast notification when recipe reaches "ready" status
-  - [ ] 7.5 Show Card when recipe reaches "ready" status
-  - [ ] 7.6 Stop polling when recipe reaches terminal state (ready/failed)
-  - [ ] 7.7 Add visual progress indicator during processing states
-  - [ ] 7.8 Handle polling errors and connection issues
-  - [ ] 7.9 Write unit tests for `useRecipePolling` hook
+  - [x] 7.1 Create `useRecipePolling` hook for non-terminal status recipes
+  - [x] 7.2 Implement polling logic with exponential backoff
+  - [x] 7.3 Update popover item when status transitions occur
+  - [x] 7.4 Show toast notification when recipe reaches "ready" status
+  - [x] 7.5 Show Card when recipe reaches "ready" status
+  - [x] 7.6 Stop polling when recipe reaches terminal state (ready/failed)
+  - [x] 7.7 Add visual progress indicator during processing states
+  - [x] 7.8 Handle polling errors and connection issues
+  - [x] 7.9 Write unit tests for `useRecipePolling` hook
 
-- [ ] **8.0 Card Actions & Interactions**
+- [x] **8.0 Card Actions & Interactions**
 
-  - [ ] 8.1 Implement "Open" button (disabled until status=ready)
-  - [ ] 8.2 Add "Copy Ingredients" action using clipboard API
-  - [ ] 8.3 Show success feedback after copying ingredients
-  - [ ] 8.4 Implement "Export JSON" action to download recipe_data
-  - [ ] 8.5 Build kebab menu with Retry, View Post, Delete actions
-  - [ ] 8.6 Implement "Retry" action for failed recipes (resume from appropriate step)
-  - [ ] 8.7 Add "View Post" action to open Instagram URL in new tab
-  - [ ] 8.8 Implement "Delete" action with confirmation dialog (shadcn component)
-  - [ ] 8.9 Ensure all actions are only visible/enabled when appropriate (based on recipe_data presence)
-  - [ ] 8.10 Add aria-labels to all action icons
-  - [ ] 8.11 Write unit tests for all card actions
+  - [x] 8.1 Implement "Open" button - navigates to recipe detail page
+  - [x] 8.2 “Copy Ingredients” – copies only ingredients via Clipboard API with success toast.
+  - [x] 8.3 “Copy Steps” – copies only step-by-step instructions with success toast.
+  - [x] 8.4 “Export JSON” – downloads structured recipe_data as a .json file.
+  - [x] 8.5 Build kebab menu with View Post, Delete actions
+  - [x] 8.6 Implement "View Post" action to open Instagram URL in new tab
+  - [x] 8.7 Implement "Delete" action with confirmation dialog (shadcn component)
+  - [x] 8.8 Ensure all actions are only visible/enabled when appropriate (based on recipe_data presence)
+  - [x] 8.9 Add aria-labels to all action icons
+  - [x] 8.10 Write unit tests for all card actions
 
 - [ ] **9.0 Error Handling & Edge Cases**
 
@@ -146,18 +145,6 @@
   - [ ] 9.6 Handle long titles with proper text clamping (2-line max)
   - [ ] 9.7 Handle missing or invalid timestamps
   - [ ] 9.8 Test all edge cases with various incomplete data scenarios
-
-- [ ] **10.0 Accessibility & Polish**
-  - [ ] 10.1 Verify all interactive elements have keyboard navigation
-  - [ ] 10.2 Test screen reader compatibility for all components
-  - [ ] 10.3 Ensure focus management in modals and dialogs
-  - [ ] 10.4 Add loading skeletons with proper aria-busy attributes
-  - [ ] 10.5 Implement smooth transitions for all state changes
-  - [ ] 10.6 Add subtle animation to card hover (lift + shadow + scale)
-  - [ ] 10.7 Verify 4.5:1 contrast ratio across all text elements
-  - [ ] 10.8 Test with keyboard-only navigation
-  - [ ] 10.9 Run accessibility audit with axe or similar tool
-  - [ ] 10.10 Fix any accessibility issues found during audit
 
 ---
 

@@ -5,7 +5,7 @@ import { InstagramRecipePost } from "@/models/InstagramRecipePost";
 import {
   createQueuedRecipeFromUrl,
   extractInstagramShortCode,
-} from "@/lib/utils/recipeHelpers";
+} from "@/lib/shared/utils/recipeHelpers";
 
 export async function GET() {
   try {

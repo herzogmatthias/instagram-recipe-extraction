@@ -3,12 +3,21 @@ import path from "path";
 import { promises as fs } from "fs";
 import { InstagramRecipePost } from "@/models/InstagramRecipePost";
 
+async function resolveParams(
+  params: { id: string } | Promise<{ id: string }>
+): Promise<{ id: string }> {
+  if (typeof (params as Promise<{ id: string }>).then === "function") {
+    return params as Promise<{ id: string }>;
+  }
+  return params as { id: string };
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await resolveParams(params);
 
     if (!id) {
       return NextResponse.json(
@@ -48,6 +57,66 @@ export async function GET(
         };
 
         return NextResponse.json(recipeWithStatus);
+      }
+    }
+
+    return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await resolveParams(params);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Recipe ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const dataDirectory = path.join(process.cwd(), "data");
+    const files = await fs.readdir(dataDirectory);
+    const jsonFiles = files.filter((file) => file.endsWith(".json"));
+
+    for (const file of jsonFiles) {
+      const filePath = path.join(dataDirectory, file);
+      const fileContent = await fs.readFile(filePath, "utf8");
+
+      try {
+        const parsed: unknown = JSON.parse(fileContent);
+
+        if (Array.isArray(parsed)) {
+          const typedRecipes = parsed as InstagramRecipePost[];
+          const matchIndex = typedRecipes.findIndex(
+            (recipe) => recipe.id === id
+          );
+
+          if (matchIndex !== -1) {
+            typedRecipes.splice(matchIndex, 1);
+            await fs.writeFile(
+              filePath,
+              JSON.stringify(typedRecipes, null, 2)
+            );
+            return NextResponse.json({ success: true, deletedId: id });
+          }
+        } else if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          (parsed as InstagramRecipePost).id === id
+        ) {
+          await fs.writeFile(filePath, JSON.stringify({}, null, 2));
+          return NextResponse.json({ success: true, deletedId: id });
+        }
+      } catch (error) {
+        console.error(`Failed to process ${file}:`, error);
       }
     }
 

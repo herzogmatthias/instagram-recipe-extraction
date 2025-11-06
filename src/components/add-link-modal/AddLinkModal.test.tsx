@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import matchers from "@testing-library/jest-dom/matchers";
-import { AddLinkModal } from "../AddLinkModal";
+import { AddLinkModal } from "./AddLinkModal";
 import { describe, it, jest } from "@jest/globals";
 
 expect.extend(matchers);

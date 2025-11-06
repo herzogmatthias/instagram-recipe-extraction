@@ -12,22 +12,9 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { X, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-export interface FilterBarProps {
-  cuisines?: string[];
-  tags?: string[];
-  onFilterChange?: (filters: FilterState) => void;
-  className?: string;
-  variant?: "inline" | "sidebar" | "modal";
-  value?: FilterState;
-}
-
-export interface FilterState {
-  searchQuery: string;
-  selectedCuisines: string[];
-  selectedTags: string[];
-}
+import { cn } from "@/lib/shared/utils/utils";
+import type { FilterBarProps, FilterState } from "./FilterBar.types";
+import { hasActiveFilters, toggleSelection } from "./FilterBar.utils";
 
 export function FilterBar({
   cuisines = [],
@@ -87,10 +74,7 @@ export function FilterBar({
 
   const handleCuisineToggle = useCallback(
     (cuisine: string) => {
-      const existing = currentSelectedCuisines;
-      const nextCuisines = existing.includes(cuisine)
-        ? existing.filter((c) => c !== cuisine)
-        : [...existing, cuisine];
+      const nextCuisines = toggleSelection(cuisine, currentSelectedCuisines);
 
       if (!isControlled) {
         setSelectedCuisines(nextCuisines);
@@ -109,10 +93,7 @@ export function FilterBar({
 
   const handleTagToggle = useCallback(
     (tag: string) => {
-      const existing = currentSelectedTags;
-      const nextTags = existing.includes(tag)
-        ? existing.filter((t) => t !== tag)
-        : [...existing, tag];
+      const nextTags = toggleSelection(tag, currentSelectedTags);
 
       if (!isControlled) {
         setSelectedTags(nextTags);
@@ -138,10 +119,11 @@ export function FilterBar({
     notifyFilterChange("", [], []);
   }, [isControlled, notifyFilterChange]);
 
-  const hasActiveFilters =
-    currentSearchQuery !== "" ||
-    currentSelectedCuisines.length > 0 ||
-    currentSelectedTags.length > 0;
+  const activeFilters = hasActiveFilters({
+    searchQuery: currentSearchQuery,
+    selectedCuisines: currentSelectedCuisines,
+    selectedTags: currentSelectedTags,
+  });
 
   return (
     <div
@@ -319,7 +301,7 @@ export function FilterBar({
           </DropdownMenu>
 
           {/* Clear filters button */}
-          {hasActiveFilters && (
+          {activeFilters && (
             <Button
               variant="ghost"
               size="default"
@@ -342,3 +324,4 @@ export function FilterBar({
 }
 
 export default FilterBar;
+export type { FilterBarProps, FilterState } from "./FilterBar.types";

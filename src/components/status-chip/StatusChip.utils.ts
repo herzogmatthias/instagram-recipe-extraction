@@ -1,13 +1,6 @@
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { RecipeStatus } from "@/models/InstagramRecipePost";
 
-interface StatusChipProps {
-  status: RecipeStatus;
-  className?: string;
-}
-
-const statusConfig: Record<
+export const STATUS_STYLES: Record<
   RecipeStatus,
   { label: string; color: string; bgColor: string }
 > = {
@@ -53,22 +46,3 @@ const statusConfig: Record<
   },
 };
 
-export function StatusChip({ status, className }: StatusChipProps) {
-  const config = statusConfig[status];
-
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "text-xs font-medium border px-3 py-1 rounded-full",
-        config.color,
-        config.bgColor,
-        className
-      )}
-      aria-label={`Recipe status: ${config.label}`}
-      role="status"
-    >
-      {config.label}
-    </Badge>
-  );
-}

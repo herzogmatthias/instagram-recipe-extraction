@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-import { ProcessingQueueProvider } from "@/lib/hooks/useProcessingQueue";
+import { ProcessingQueueProvider } from "@/lib/client/hooks/useProcessingQueue";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",

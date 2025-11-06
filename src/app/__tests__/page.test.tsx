@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import Home from "../page";
-import * as recipeHook from "../../lib/hooks/useRecipeData";
-import { ProcessingQueueProvider } from "../../lib/hooks/useProcessingQueue";
+import * as recipeHook from "../../lib/client/hooks/useRecipeData";
+import { ProcessingQueueProvider } from "../../lib/client/hooks/useProcessingQueue";
 
 // Mock the useRecipeData hook
-jest.mock("../../lib/hooks/useRecipeData");
+jest.mock("../../lib/client/hooks/useRecipeData");
 
 // Mock next/image
 jest.mock("next/image", () => ({
