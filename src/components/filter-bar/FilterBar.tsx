@@ -12,13 +12,14 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { X, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/shared/utils/utils";
-import type { FilterBarProps, FilterState } from "./FilterBar.types";
+import { cn } from "@/lib/utils";
+import type { FilterBarProps } from "./FilterBar.types";
 import { hasActiveFilters, toggleSelection } from "./FilterBar.utils";
 
 export function FilterBar({
   cuisines = [],
   tags = [],
+  difficulties = [],
   onFilterChange,
   className,
   variant = "inline",
@@ -27,6 +28,10 @@ export function FilterBar({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>(
+    []
+  );
+  const [maxTotalTime, setMaxTotalTime] = useState<number | null>(null);
   const isSidebar = variant === "sidebar";
   const isModal = variant === "modal";
   const isControlled = value !== undefined;
@@ -35,15 +40,29 @@ export function FilterBar({
     ? value!.selectedCuisines
     : selectedCuisines;
   const currentSelectedTags = isControlled ? value!.selectedTags : selectedTags;
+  const currentSelectedDifficulties = isControlled
+    ? value!.selectedDifficulties
+    : selectedDifficulties;
+  const currentMaxTotalTime = isControlled
+    ? value!.maxTotalTime ?? null
+    : maxTotalTime;
 
   // Notify parent of filter changes
   const notifyFilterChange = useCallback(
-    (newSearch: string, newCuisines: string[], newTags: string[]) => {
+    (
+      newSearch: string,
+      newCuisines: string[],
+      newTags: string[],
+      newDifficulties: string[],
+      newMaxTime: number | null
+    ) => {
       if (onFilterChange) {
         onFilterChange({
           searchQuery: newSearch,
           selectedCuisines: newCuisines,
           selectedTags: newTags,
+          selectedDifficulties: newDifficulties,
+          maxTotalTime: newMaxTime,
         });
       }
     },
@@ -61,13 +80,17 @@ export function FilterBar({
       notifyFilterChange(
         nextSearch,
         currentSelectedCuisines,
-        currentSelectedTags
+        currentSelectedTags,
+        currentSelectedDifficulties,
+        currentMaxTotalTime
       );
     },
     [
       isControlled,
       currentSelectedCuisines,
       currentSelectedTags,
+      currentSelectedDifficulties,
+      currentMaxTotalTime,
       notifyFilterChange,
     ]
   );
@@ -80,12 +103,20 @@ export function FilterBar({
         setSelectedCuisines(nextCuisines);
       }
 
-      notifyFilterChange(currentSearchQuery, nextCuisines, currentSelectedTags);
+      notifyFilterChange(
+        currentSearchQuery,
+        nextCuisines,
+        currentSelectedTags,
+        currentSelectedDifficulties,
+        currentMaxTotalTime
+      );
     },
     [
       isControlled,
       currentSelectedCuisines,
       currentSelectedTags,
+      currentSelectedDifficulties,
+      currentMaxTotalTime,
       currentSearchQuery,
       notifyFilterChange,
     ]
@@ -99,13 +130,78 @@ export function FilterBar({
         setSelectedTags(nextTags);
       }
 
-      notifyFilterChange(currentSearchQuery, currentSelectedCuisines, nextTags);
+      notifyFilterChange(
+        currentSearchQuery,
+        currentSelectedCuisines,
+        nextTags,
+        currentSelectedDifficulties,
+        currentMaxTotalTime
+      );
     },
     [
       isControlled,
       currentSelectedTags,
       currentSelectedCuisines,
+      currentSelectedDifficulties,
+      currentMaxTotalTime,
       currentSearchQuery,
+      notifyFilterChange,
+    ]
+  );
+
+  const handleDifficultyToggle = useCallback(
+    (difficulty: string) => {
+      const nextDifficulties = toggleSelection(
+        difficulty,
+        currentSelectedDifficulties
+      );
+
+      if (!isControlled) {
+        setSelectedDifficulties(nextDifficulties);
+      }
+
+      notifyFilterChange(
+        currentSearchQuery,
+        currentSelectedCuisines,
+        currentSelectedTags,
+        nextDifficulties,
+        currentMaxTotalTime
+      );
+    },
+    [
+      isControlled,
+      currentSelectedDifficulties,
+      currentSelectedCuisines,
+      currentSelectedTags,
+      currentMaxTotalTime,
+      currentSearchQuery,
+      notifyFilterChange,
+    ]
+  );
+
+  const handleMaxTimeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      const nextMaxTime = value === "" ? null : parseInt(value, 10);
+
+      if (!isControlled) {
+        setMaxTotalTime(nextMaxTime);
+      }
+
+      notifyFilterChange(
+        currentSearchQuery,
+        currentSelectedCuisines,
+        currentSelectedTags,
+        currentSelectedDifficulties,
+        nextMaxTime
+      );
+    },
+    [
+      isControlled,
+      currentSearchQuery,
+      currentSelectedCuisines,
+      currentSelectedTags,
+      currentSelectedDifficulties,
       notifyFilterChange,
     ]
   );
@@ -115,14 +211,18 @@ export function FilterBar({
       setSearchQuery("");
       setSelectedCuisines([]);
       setSelectedTags([]);
+      setSelectedDifficulties([]);
+      setMaxTotalTime(null);
     }
-    notifyFilterChange("", [], []);
+    notifyFilterChange("", [], [], [], null);
   }, [isControlled, notifyFilterChange]);
 
   const activeFilters = hasActiveFilters({
     searchQuery: currentSearchQuery,
     selectedCuisines: currentSelectedCuisines,
     selectedTags: currentSelectedTags,
+    selectedDifficulties: currentSelectedDifficulties,
+    maxTotalTime: currentMaxTotalTime,
   });
 
   return (
@@ -299,6 +399,84 @@ export function FilterBar({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Difficulty filter dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="default"
+                className={cn(
+                  "gap-2 rounded-full px-4",
+                  isSidebar || isModal ? "w-full justify-between" : ""
+                )}
+                data-testid="difficulty-filter-trigger"
+                aria-label={`Filter by difficulty${
+                  currentSelectedDifficulties.length > 0
+                    ? ` (${currentSelectedDifficulties.length} selected)`
+                    : ""
+                }`}
+              >
+                Difficulty
+                {currentSelectedDifficulties.length > 0 && (
+                  <span className="font-semibold text-primary">
+                    ({currentSelectedDifficulties.length})
+                  </span>
+                )}
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className={cn(
+                "w-56",
+                isSidebar && "w-64",
+                isModal && "w-[min(20rem,90vw)]"
+              )}
+            >
+              <DropdownMenuLabel>Select difficulty</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {difficulties.length === 0 ? (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                  No difficulty levels available
+                </div>
+              ) : (
+                difficulties.map((difficulty) => (
+                  <DropdownMenuCheckboxItem
+                    key={difficulty}
+                    checked={currentSelectedDifficulties.includes(difficulty)}
+                    onCheckedChange={() => handleDifficultyToggle(difficulty)}
+                    data-testid={`difficulty-option-${difficulty}`}
+                  >
+                    {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                  </DropdownMenuCheckboxItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Max time input */}
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              isSidebar || isModal ? "w-full" : ""
+            )}
+          >
+            <Input
+              type="number"
+              placeholder="Max time (min)"
+              value={currentMaxTotalTime ?? ""}
+              onChange={handleMaxTimeChange}
+              min="0"
+              step="5"
+              className={cn(
+                "h-11 rounded-full",
+                isSidebar || isModal ? "w-full" : "w-32"
+              )}
+              aria-label="Maximum total time in minutes"
+              data-testid="max-time-input"
+            />
+          </div>
 
           {/* Clear filters button */}
           {activeFilters && (

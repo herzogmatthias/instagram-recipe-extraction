@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/shared/utils/utils";
+import { cn } from "@/lib/utils";
 import type { StatusChipProps } from "./StatusChip.types";
 import { STATUS_STYLES } from "./StatusChip.utils";
 

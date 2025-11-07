@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/shared/utils/utils";
+import { cn } from "@/lib/utils";
 import {
   Moon,
   Sun,
@@ -28,6 +28,7 @@ import { getFilterBadgeValue, getProcessingBadgeLabel } from "./Navbar.utils";
 export const Navbar: React.FC<NavbarProps> = ({
   onAddRecipe,
   onOpenFilters,
+  onViewHistory,
   activeFilterCount = 0,
   processingItems,
   processingOpen,
@@ -102,6 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             trigger={processingTrigger}
             onRemoveItem={onRemoveFromQueue}
             onRetryItem={onRetryFromQueue}
+            onViewHistory={onViewHistory}
           />
 
           <Link

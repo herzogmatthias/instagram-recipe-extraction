@@ -145,6 +145,41 @@ export function getRecipesCollection(): CollectionReference<RecipeFirestoreRecor
   ) as CollectionReference<RecipeFirestoreRecord>;
 }
 
+export async function findRecipeByUrl(
+  inputUrl: string
+): Promise<RecipeDocument | null> {
+  if (!inputUrl) {
+    return null;
+  }
+  const snapshot = await getRecipesCollection()
+    .where("inputUrl", "==", inputUrl)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+  return deserializeRecipe(snapshot.docs[0]!);
+}
+
+export async function findPendingImportByUrl(
+  inputUrl: string
+): Promise<RecipeImportDocument | null> {
+  if (!inputUrl) {
+    return null;
+  }
+  const snapshot = await getImportsCollection()
+    .where("inputUrl", "==", inputUrl)
+    .where("status", "in", ["queued", "fetching", "analyzing"])
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+  return deserializeImport(snapshot.docs[0]!);
+}
+
 export async function createImport(
   input: CreateImportInput
 ): Promise<RecipeImportDocument> {
@@ -213,6 +248,52 @@ export async function getImport(
   return deserializeImport(doc);
 }
 
+type ListImportsOptions = {
+  limit?: number;
+  status?: RecipeStatus;
+  sortDirection?: "asc" | "desc";
+  cursor?: string;
+};
+
+export async function listImports(options?: ListImportsOptions): Promise<{
+  imports: RecipeImportDocument[];
+  nextCursor: string | null;
+}> {
+  const limit = Math.min(Math.max(options?.limit ?? 50, 1), 100);
+  const sortDirection = options?.sortDirection === "asc" ? "asc" : "desc";
+  let query: FirebaseFirestore.Query<RecipeImportFirestoreRecord> =
+    getImportsCollection().orderBy("createdAt", sortDirection);
+
+  if (options?.status) {
+    query = query.where("status", "==", options.status);
+  }
+
+  if (options?.cursor) {
+    const cursorDate = new Date(options.cursor);
+    if (!Number.isNaN(cursorDate.getTime())) {
+      query = query.startAfter(Timestamp.fromDate(cursorDate));
+    }
+  }
+
+  query = query.limit(limit);
+  const snapshot = await query.get();
+  const imports = snapshot.docs.map((doc) => deserializeImport(doc));
+  const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+  const nextCursor =
+    snapshot.size === limit && lastDoc?.data()?.createdAt
+      ? toIsoString(lastDoc.data()!.createdAt) ?? null
+      : null;
+
+  return { imports, nextCursor };
+}
+
+export async function deleteImport(id: string): Promise<void> {
+  if (!id) {
+    throw new Error("deleteImport: id is required");
+  }
+  await getImportsCollection().doc(id).delete();
+}
+
 export async function createRecipe(
   input: RecipeUpsertInput
 ): Promise<RecipeDocument> {
@@ -248,6 +329,16 @@ export async function getRecipe(id: string): Promise<RecipeDocument | null> {
     return null;
   }
   return deserializeRecipe(doc);
+}
+
+export async function fetchRecipeDetail(
+  id: string
+): Promise<InstagramRecipePost | null> {
+  const recipe = await getRecipe(id);
+  if (!recipe) {
+    return null;
+  }
+  return expandRecipeDocument(recipe);
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
@@ -352,6 +443,61 @@ function toIsoString(value?: unknown): string | undefined {
     return value;
   }
   return undefined;
+}
+
+function expandRecipeDocument(
+  doc: RecipeDocument
+): InstagramRecipePost {
+  const fallbackStepMedia =
+    doc.recipe_data?.steps
+      ?.map((step) => step.chefs_note)
+      .find(
+        (note): note is string =>
+          typeof note === "string" && note.startsWith("http")
+      ) ?? null;
+
+  const displayUrl =
+    doc.displayUrl ?? doc.images?.find(Boolean) ?? fallbackStepMedia;
+
+  return {
+    inputUrl: doc.inputUrl,
+    id: doc.id,
+    type: doc.type ?? "Video",
+    shortCode: doc.shortCode ?? doc.id,
+    caption: doc.caption ?? "",
+    hashtags: doc.hashtags ?? [],
+    mentions: doc.mentions ?? [],
+    url: doc.url ?? doc.inputUrl,
+    commentsCount: doc.commentsCount ?? 0,
+    firstComment: doc.firstComment ?? null,
+    latestComments: doc.latestComments ?? [],
+    dimensionsHeight: doc.dimensionsHeight ?? null,
+    dimensionsWidth: doc.dimensionsWidth ?? null,
+    displayUrl,
+    images: doc.images ?? (displayUrl ? [displayUrl] : []),
+    videoUrl: doc.videoUrl ?? null,
+    alt: doc.alt ?? null,
+    likesCount: doc.likesCount ?? 0,
+    videoViewCount: doc.videoViewCount ?? null,
+    videoPlayCount: doc.videoPlayCount ?? null,
+    timestamp:
+      doc.timestamp ?? doc.createdAt ?? new Date().toISOString(),
+    childPosts: doc.childPosts ?? [],
+    ownerFullName: doc.ownerFullName ?? null,
+    ownerUsername: doc.ownerUsername ?? "unknown",
+    ownerId: doc.ownerId ?? "unknown",
+    productType: doc.productType ?? "feed",
+    videoDuration: doc.videoDuration ?? null,
+    isSponsored: doc.isSponsored ?? false,
+    musicInfo: doc.musicInfo,
+    isCommentsDisabled: doc.isCommentsDisabled ?? false,
+    recipe_data: doc.recipe_data,
+    status: doc.status ?? "ready",
+    progress: typeof doc.progress === "number" ? doc.progress : 100,
+    error: doc.error,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
 }
 
 function coerceTimestamp(

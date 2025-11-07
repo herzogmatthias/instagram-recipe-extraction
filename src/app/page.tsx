@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import Navbar from "@/components/navbar/Navbar";
 import { RecipeCard } from "@/components/recipe-card/RecipeCard";
 import { FilterBar, FilterState } from "@/components/filter-bar/FilterBar";
 import { AddLinkModal } from "@/components/add-link-modal/AddLinkModal";
@@ -10,12 +9,9 @@ import { Plus, X } from "lucide-react";
 import { useRecipeData } from "@/lib/client/hooks/useRecipeData";
 import { useProcessingQueue } from "@/lib/client/hooks/useProcessingQueue";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/shared/utils/utils";
+import { cn } from "@/lib/utils";
 
-import {
-  InstagramRecipePost,
-  RecipeStatus,
-} from "@/models/InstagramRecipePost";
+import { RecipeStatus } from "@/models/InstagramRecipePost";
 import type { RecipeImportDocument } from "@/models/RecipeImport";
 import { toast, Toaster } from "sonner";
 import {
@@ -44,16 +40,16 @@ export default function Home() {
     searchQuery: "",
     selectedCuisines: [],
     selectedTags: [],
+    selectedDifficulties: [],
+    maxTotalTime: null,
   });
   const [isFilterDialogOpen, setFilterDialogOpen] = useState(false);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
-  const [isProcessingPopoverOpen, setProcessingPopoverOpen] = useState(false);
 
   // Processing queue management
   const {
     queue: processingQueue,
     addToQueue,
-    removeFromQueue,
     isInQueue,
   } = useProcessingQueue();
 
@@ -88,11 +84,24 @@ export default function Home() {
     });
   }, [processingQueue]);
 
+  // Listen to custom events from LayoutNavbar
+  useEffect(() => {
+    const handleOpenAddModal = () => setAddModalOpen(true);
+    const handleOpenFilters = () => setFilterDialogOpen(true);
+
+    window.addEventListener("openAddRecipeModal", handleOpenAddModal);
+    window.addEventListener("openFiltersDialog", handleOpenFilters);
+
+    return () => {
+      window.removeEventListener("openAddRecipeModal", handleOpenAddModal);
+      window.removeEventListener("openFiltersDialog", handleOpenFilters);
+    };
+  }, []);
+
   const handleAddRecipeSubmit = useCallback(
     async ({ url }: { url: string }) => {
       try {
         // Show processing popover
-        setProcessingPopoverOpen(true);
 
         // Call the API to create the recipe
         const response = await fetch("/api/recipes/import", {
@@ -116,6 +125,16 @@ export default function Home() {
             typeof (payload as { error?: unknown }).error === "string"
               ? ((payload as { error?: string }).error as string)
               : "Failed to add recipe.";
+
+          // Handle duplicate recipe case (409 Conflict)
+          if (response.status === 409) {
+            toast.error("Duplicate recipe", {
+              description: message,
+              duration: 5000,
+            });
+            return; // Don't throw - this is a handled case
+          }
+
           throw new Error(message);
         }
 
@@ -136,27 +155,10 @@ export default function Home() {
     [addToQueue, isInQueue]
   );
 
-  const handleRetryFromQueue = useCallback(
-    async (id: string) => {
-      const item = processingQueue.find((entry) => entry.id === id);
-      if (!item) {
-        return;
-      }
-      try {
-        await handleAddRecipeSubmit({ url: item.url });
-        removeFromQueue(id);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to retry import.";
-        toast.error(message);
-      }
-    },
-    [processingQueue, handleAddRecipeSubmit, removeFromQueue]
-  );
-
-  const { cuisines, tags } = useMemo(() => {
+  const { cuisines, tags, difficulties } = useMemo(() => {
     const cuisineSet = new Set<string>();
     const tagSet = new Set<string>();
+    const difficultySet = new Set<string>();
 
     readyRecipes.forEach((recipe) => {
       if (recipe.recipe_data?.cuisine) {
@@ -169,11 +171,15 @@ export default function Home() {
           }
         });
       }
+      if (recipe.recipe_data?.difficulty) {
+        difficultySet.add(recipe.recipe_data.difficulty);
+      }
     });
 
     return {
       cuisines: Array.from(cuisineSet).sort(),
       tags: Array.from(tagSet).sort(),
+      difficulties: Array.from(difficultySet).sort(),
     };
   }, [readyRecipes]);
 
@@ -217,6 +223,23 @@ export default function Home() {
         if (!hasMatchingTag) return false;
       }
 
+      if (filters.selectedDifficulties.length > 0) {
+        const recipeDifficulty = recipe.recipe_data?.difficulty;
+        if (
+          !recipeDifficulty ||
+          !filters.selectedDifficulties.includes(recipeDifficulty)
+        ) {
+          return false;
+        }
+      }
+
+      if (filters.maxTotalTime !== null && filters.maxTotalTime !== undefined) {
+        const recipeTotalTime = recipe.recipe_data?.total_time_min;
+        if (!recipeTotalTime || recipeTotalTime > filters.maxTotalTime) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [readyRecipes, filters]);
@@ -234,10 +257,6 @@ export default function Home() {
     !loading && filteredRecipes.length === 0 && readyRecipes.length > 0;
   const showEmptyState = !loading && readyRecipes.length === 0 && !error;
   const showGrid = !loading && filteredRecipes.length > 0;
-  const activeFilterCount =
-    (filters.searchQuery.trim() ? 1 : 0) +
-    filters.selectedCuisines.length +
-    filters.selectedTags.length;
 
   const handleRecipeDeleted = useCallback(() => {
     // Firestore listeners update the UI automatically.
@@ -246,18 +265,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" />
-      <Navbar
-        onAddRecipe={handleAddClick}
-        onOpenFilters={() => setFilterDialogOpen(true)}
-        processingItems={processingQueue}
-        processingOpen={isProcessingPopoverOpen}
-        onProcessingOpenChange={setProcessingPopoverOpen}
-        onRemoveFromQueue={removeFromQueue}
-        onRetryFromQueue={handleRetryFromQueue}
-        activeFilterCount={activeFilterCount}
-      />
 
-      <main className="pt-24 pb-20">
+      <main className="pt-8 pb-20">
         <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-14 px-6 sm:px-8 lg:px-12 2xl:max-w-[2000px]">
           <header className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 text-center md:gap-8">
             <div className="space-y-3">
@@ -312,6 +321,7 @@ export default function Home() {
                 <FilterBar
                   cuisines={cuisines}
                   tags={tags}
+                  difficulties={difficulties}
                   onFilterChange={handleFilterChange}
                   variant="sidebar"
                   value={filters}
@@ -349,6 +359,8 @@ export default function Home() {
                             searchQuery: "",
                             selectedCuisines: [],
                             selectedTags: [],
+                            selectedDifficulties: [],
+                            maxTotalTime: null,
                           });
                         }}
                         data-testid="clear-filters-button"
@@ -441,6 +453,7 @@ export default function Home() {
             <FilterBar
               cuisines={cuisines}
               tags={tags}
+              difficulties={difficulties}
               onFilterChange={handleFilterChange}
               variant="modal"
               value={filters}

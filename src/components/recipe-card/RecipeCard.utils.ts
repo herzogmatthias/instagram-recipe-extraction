@@ -15,9 +15,7 @@ export function getExportFileName(recipeId: string, title: string): string {
   return `${normalized || `recipe-${recipeId}`}.json`;
 }
 
-export function formatIngredientsForCopy(
-  ingredients?: Ingredient[]
-): string {
+export function formatIngredientsForCopy(ingredients?: Ingredient[]): string {
   if (!ingredients?.length) {
     return "";
   }
@@ -32,7 +30,10 @@ export function formatIngredientsForCopy(
       const name = ingredient.name || "Ingredient";
       const prep = ingredient.preparation ? ` (${ingredient.preparation})` : "";
 
-      return `• ${[quantity, unit, name].filter(Boolean).join(" ").trim()}${prep}`;
+      return `• ${[quantity, unit, name]
+        .filter(Boolean)
+        .join(" ")
+        .trim()}${prep}`;
     })
     .join("\n");
 }
@@ -125,21 +126,3 @@ export function getFallbackInitial(title: string): string {
   const letter = title.trim().charAt(0);
   return letter ? letter.toUpperCase() : "?";
 }
-
-export function shouldShowErrorBadge(recipe: InstagramRecipePost): boolean {
-  return recipe.status === "failed" || Boolean(recipe.error);
-}
-
-export function getRecipeErrorMessage(
-  recipe: InstagramRecipePost
-): string | null {
-  if (!shouldShowErrorBadge(recipe)) {
-    return null;
-  }
-
-  return (
-    recipe.error ||
-    "We hit a snag while extracting this recipe. Please retry in a moment."
-  );
-}
-

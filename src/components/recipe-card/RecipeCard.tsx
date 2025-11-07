@@ -37,9 +37,8 @@ import {
   Link2,
   Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/shared/utils/utils";
+import { cn } from "@/lib/utils";
 import type { RecipeCardProps } from "./RecipeCard.types";
-import { StatusChip } from "@/components/status-chip/StatusChip";
 import {
   copyToClipboard,
   exportRecipeJson,
@@ -48,8 +47,6 @@ import {
   getExportFileName,
   deriveCoverUrl,
   getFallbackInitial,
-  getRecipeErrorMessage,
-  shouldShowErrorBadge,
 } from "./RecipeCard.utils";
 
 export function RecipeCard({
@@ -85,8 +82,6 @@ export function RecipeCard({
   }
   const coverUrl = derivedCover ?? lastGoodCoverRef.current;
   const placeholderInitial = getFallbackInitial(title);
-  const showErrorBadge = shouldShowErrorBadge(recipe);
-  const errorMessage = getRecipeErrorMessage(recipe);
   const isFailed = recipe.status === "failed";
   const isProcessing =
     recipe.status && !["ready", "failed"].includes(recipe.status);
@@ -201,29 +196,6 @@ export function RecipeCard({
           ratio={3 / 2}
           className="relative overflow-hidden bg-muted"
         >
-          {recipe.status && (
-            <div className="absolute left-4 top-4 z-20">
-              <StatusChip status={recipe.status} />
-            </div>
-          )}
-
-          {showErrorBadge && (
-            <div className="absolute right-4 top-4 z-20">
-              <Badge
-                variant="destructive"
-                title={errorMessage ?? undefined}
-                aria-label={
-                  errorMessage
-                    ? `Recipe error: ${errorMessage}`
-                    : "Recipe error"
-                }
-                data-testid="error-badge"
-              >
-                Error
-              </Badge>
-            </div>
-          )}
-
           {coverUrl ? (
             <>
               <Image

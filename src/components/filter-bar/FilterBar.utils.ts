@@ -10,7 +10,8 @@ export function hasActiveFilters(state: FilterState): boolean {
   return (
     state.searchQuery.trim().length > 0 ||
     state.selectedCuisines.length > 0 ||
-    state.selectedTags.length > 0
+    state.selectedTags.length > 0 ||
+    (state.maxTotalTime !== undefined && state.maxTotalTime !== null) ||
+    state.selectedDifficulties.length > 0
   );
 }
-

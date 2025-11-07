@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
 import { deleteRecipe, getRecipe } from "@/lib/server/services/firestore";
 
-async function resolveParams(
-  params: { id: string } | Promise<{ id: string }>
-): Promise<{ id: string }> {
-  if (typeof (params as Promise<{ id: string }>).then === "function") {
-    return params as Promise<{ id: string }>;
-  }
-  return params as { id: string };
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await resolveParams(params);
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -42,7 +33,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await resolveParams(params);
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(

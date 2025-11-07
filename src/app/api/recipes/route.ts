@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type { RecipeStatus } from "@/models/InstagramRecipePost";
 import { listRecipes } from "@/lib/server/services/firestore";
 
@@ -16,16 +16,18 @@ function isValidStatus(value: string | null): value is RecipeStatus {
   return value ? (VALID_STATUSES as string[]).includes(value) : false;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const statusParam = searchParams.get("status");
     const sortParam = searchParams.get("sort");
     const cursor = searchParams.get("cursor") ?? undefined;
     const limitParam = Number(searchParams.get("limit"));
 
     const { recipes, nextCursor } = await listRecipes({
-      status: isValidStatus(statusParam) ? (statusParam as RecipeStatus) : undefined,
+      status: isValidStatus(statusParam)
+        ? (statusParam as RecipeStatus)
+        : undefined,
       sortDirection: sortParam === "asc" ? "asc" : "desc",
       cursor,
       limit: Number.isFinite(limitParam) ? limitParam : undefined,
@@ -34,7 +36,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ items: recipes, nextCursor });
   } catch (error) {
     console.error("Error loading recipes:", error);
-    return NextResponse.json({ error: "Failed to load recipes" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load recipes" },
+      { status: 500 }
+    );
   }
 }
 

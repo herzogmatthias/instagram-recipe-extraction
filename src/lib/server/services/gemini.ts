@@ -6,8 +6,6 @@ import {
   type RecipeValidationIssue,
   validateRecipeData,
 } from "@/lib/shared/utils/recipeValidator";
-import fs from "node:fs";
-import path from "node:path";
 
 export type GeminiUploadErrorCode =
   | "MISSING_API_KEY"
@@ -368,6 +366,11 @@ function pickRecipeCandidate(payload: any) {
     );
   }
 
+  const assembled = assembleRecipeFromEnvelope(payload);
+  if (assembled) {
+    return assembled;
+  }
+
   if (Array.isArray(payload)) {
     if (payload.length === 0) {
       throw new GeminiExtractionError(
@@ -381,7 +384,7 @@ function pickRecipeCandidate(payload: any) {
         "Gemini returned multiple recipes; please disambiguate"
       );
     }
-    return payload[0];
+    return assembleRecipeFromEnvelope(payload[0]) ?? payload[0];
   }
 
   if (Array.isArray(payload.recipes)) {
@@ -397,11 +400,16 @@ function pickRecipeCandidate(payload: any) {
         "Gemini returned multiple recipes; please disambiguate"
       );
     }
-    return payload.recipes[0];
+    return (
+      assembleRecipeFromEnvelope(payload.recipes[0]) ?? payload.recipes[0]
+    );
   }
 
   if (payload.recipe) {
-    return payload.recipe;
+    return (
+      assembleRecipeFromEnvelope(payload) ??
+      payload.recipe
+    );
   }
 
   if (looksLikeRecipe(payload)) {
@@ -412,6 +420,24 @@ function pickRecipeCandidate(payload: any) {
     "NO_RECIPE",
     "Gemini response missing recognizable recipe data"
   );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function assembleRecipeFromEnvelope(candidate: any) {
+  if (
+    candidate &&
+    typeof candidate === "object" &&
+    candidate.recipe &&
+    Array.isArray(candidate.ingredients) &&
+    Array.isArray(candidate.steps)
+  ) {
+    return {
+      ...candidate.recipe,
+      ingredients: candidate.ingredients,
+      steps: candidate.steps,
+    };
+  }
+  return null;
 }
 
 function looksLikeRecipe(candidate: unknown) {
@@ -430,6 +456,7 @@ function looksLikeRecipe(candidate: unknown) {
 function buildRecipePrompt(params: ExtractRecipeParams) {
   const segments = [
     "You are a culinary assistant that extracts structured recipes from Instagram content. Respond with JSON only using the structured output schema provided to you - no Markdown.",
+    "If the recipe is in another language than English, translate it to english as best as you can.",
     "Use the caption as the primary source. If ingredients or steps are missing there, inspect the provided media reference to infer them and describe that inference inside the `assumptions` array.",
     "Ensure ingredient ids are unique strings, include measurement details when visible, and keep instructions concise but complete.",
   ];

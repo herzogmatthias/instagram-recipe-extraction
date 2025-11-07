@@ -118,22 +118,17 @@ export function getRecipeResponseSchema(): Schema {
     return responseSchemaCache;
   }
 
-  // Build a Gemini-compatible JSON schema using Zod, with no $ref/definitions.
   const IngredientSchema = z.object({
-    id: z
-      .string()
-      .describe("Stable identifier for this ingredient (ing_<id>)."),
-    name: z.string().describe("Name of the ingredient."),
+    id: z.string().describe("Stable ingredient identifier."),
+    name: z.string().describe("Ingredient name."),
     quantity: z
-      .string()
+      .union([z.number(), z.string()])
       .nullable()
-      .optional()
       .describe("Quantity as seen in caption/media."),
     unit: z
       .string()
       .nullable()
-      .optional()
-      .describe("Unit of measure if applicable."),
+      .describe("Unit of measure if available (g, tbsp, cup, etc.)."),
     preparation: z
       .string()
       .nullable()
@@ -143,88 +138,87 @@ export function getRecipeResponseSchema(): Schema {
       .string()
       .nullable()
       .optional()
-      .describe("Logical group, e.g., 'Dough'."),
-    optional: z
-      .boolean()
+      .describe("Logical ingredient group."),
+    optional: z.boolean().optional().describe("True if the ingredient is optional."),
+    chefs_note: z
+      .string()
       .optional()
-      .describe("True if ingredient is optional."),
-    chefs_note: z.string().optional().describe("Optional note from the chef."),
+      .describe("Optional extra note for this ingredient."),
   });
 
   const StepSchema = z.object({
     idx: z.number().describe("1-based step index."),
-    text: z.string().describe("Instruction text for this step."),
+    text: z.string().describe("Instruction text."),
     section: z
       .string()
       .nullable()
       .optional()
-      .describe("Optional section name for grouping."),
+      .describe("Optional grouping for this step."),
     estimated_time_min: z
       .number()
       .optional()
-      .describe("Optional estimated minutes for this step."),
-    chefs_note: z.string().optional().describe("Optional note for this step."),
-    used_ingredients: z
-      .array(z.string())
-      .describe("IDs of ingredients used in this step."),
-  });
-
-  const RecipeSchema = z.object({
-    title: z.string().describe("Human-readable recipe title."),
-    tags: z.array(z.string()).optional().describe("Relevant tags/keywords."),
-    cuisine: z
+      .describe("Estimated minutes for this step."),
+    chefs_note: z
       .string()
       .optional()
-      .describe("Cuisine or style if identifiable."),
-    difficulty: z.string().optional().describe("Overall difficulty rating."),
-    total_time_min: z
-      .number()
-      .optional()
-      .describe("Total minutes to complete the recipe."),
-    assumptions: z
+      .describe("Optional hint for this step."),
+    used_ingredients: z
       .array(z.string())
-      .optional()
-      .describe("Assumptions made from media when details missing."),
-    ingredients: z
-      .array(IngredientSchema)
-      .min(1)
-      .describe("All ingredients required."),
-    steps: z.array(StepSchema).min(1).describe("Ordered preparation steps."),
-    macros_per_serving: z
-      .object({
-        calories: z.number().optional(),
-        protein_g: z.number().optional(),
-        fat_g: z.number().optional(),
-        carbs_g: z.number().optional(),
-      })
-      .nullable()
-      .optional()
-      .describe("Optional nutrition per serving."),
-    confidence: z
-      .number()
-      .optional()
-      .describe("Model confidence 0..1 for extracted data."),
+      .describe("Ingredient IDs referenced in this step."),
+  });
+
+  const ServingsSchema = z.object({
+    value: z.number().describe("Base servings yielded."),
+    note: z.string().optional().describe("Additional serving info."),
+  });
+
+  const MacrosSchema = z
+    .object({
+      calories: z.number().optional(),
+      protein_g: z.number().optional(),
+      carbs_g: z.number().optional(),
+      fat_g: z.number().optional(),
+    })
+    .catchall(z.number().optional())
+    .describe("Per-serving nutrition breakdown.");
+
+  const RecipeMetadataSchema = z.object({
+    $schema: z.string().optional(),
+    $id: z.string().optional(),
+    ref_id: z.string().optional(),
+    title: z.string(),
+    servings: ServingsSchema.optional(),
+    prep_time_min: z.number().optional(),
+    cook_time_min: z.number().optional(),
+    total_time_min: z.number().optional(),
+    difficulty: z.string().optional(),
+    cuisine: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    macros_per_serving: MacrosSchema.nullable().optional(),
+    confidence: z.number().optional(),
+    assumptions: z.array(z.string()).optional(),
   });
 
   const EnvelopeSchema = z.object({
-    recipe: RecipeSchema.describe("Primary recipe object (preferred)."),
-    recipes: z
-      .array(RecipeSchema)
-      .optional()
-      .describe("Alternative: list of recipes if multiple are present."),
-    reasoning: z
-      .array(z.string())
-      .optional()
-      .describe("Optional chain-of-thought style justifications."),
-    assumptions: z
-      .array(z.string())
-      .optional()
-      .describe("Extra stated assumptions about missing details."),
+    recipe: RecipeMetadataSchema.describe(
+      "Primary recipe metadata (without ingredients/steps)."
+    ),
+    ingredients: z
+      .array(IngredientSchema)
+      .min(1)
+      .describe("All ingredients required for the recipe."),
+    steps: z
+      .array(StepSchema)
+      .min(1)
+      .describe("Ordered preparation steps for the recipe."),
+    reasoning: z.array(z.string()).optional(),
+    assumptions: z.array(z.string()).optional(),
   });
 
-  // Inline references to avoid $ref/definitions, which the API rejects.
-  const jsonSchema = zodToJsonSchema(EnvelopeSchema);
-  responseSchemaCache = jsonSchema as unknown as Schema;
+  responseSchemaCache = zodToJsonSchema(
+    EnvelopeSchema,
+    "GeminiRecipeEnvelope"
+  ) as Schema;
   return responseSchemaCache;
 }
 

@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
-import { cn } from "@/lib/shared/utils/utils";
+import { cn } from "@/lib/utils";
 import { AddLinkModalProps } from "./AddLinkModal.types";
 import { getHelperText, getValidationError } from "./AddLinkModal.utils";
 

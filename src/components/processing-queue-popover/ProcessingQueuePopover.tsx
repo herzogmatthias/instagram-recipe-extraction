@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/shared/utils/utils";
+import { cn } from "@/lib/utils";
 import { X, RotateCcw } from "lucide-react";
 import type { ProcessingQueuePopoverProps } from "./ProcessingQueuePopover.types";
 import {

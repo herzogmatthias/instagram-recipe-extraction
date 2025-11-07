@@ -4,6 +4,7 @@ export interface NavbarProps {
   className?: string;
   onAddRecipe?: () => void;
   onOpenFilters?: () => void;
+  onViewHistory?: () => void;
   activeFilterCount?: number;
   processingItems: ProcessingQueueItem[];
   processingOpen: boolean;

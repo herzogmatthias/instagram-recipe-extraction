@@ -1,9 +1,41 @@
-import { NextResponse } from "next/server";
-import { createImport } from "@/lib/server/services/firestore";
+import { NextRequest, NextResponse } from "next/server";
+import type { RecipeStatus } from "@/models/InstagramRecipePost";
+import {
+  createImport,
+  findRecipeByUrl,
+  findPendingImportByUrl,
+  listImports,
+} from "@/lib/server/services/firestore";
 import { processRecipeImport } from "@/lib/server/services/jobOrchestrator";
 import { extractInstagramShortCode } from "@/lib/shared/utils/recipeHelpers";
 
-export async function POST(request: Request) {
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = request.nextUrl;
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const status = searchParams.get("status") || undefined;
+    const sortDirection = (searchParams.get("sortDirection") || "desc") as
+      | "asc"
+      | "desc";
+    const cursor = searchParams.get("cursor") || undefined;
+
+    const { imports, nextCursor } = await listImports({
+      limit,
+      status: status as RecipeStatus | undefined,
+      sortDirection,
+      cursor,
+    });
+
+    return NextResponse.json({ imports, nextCursor }, { status: 200 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to list imports.";
+    console.error("Error listing imports:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const url = typeof body?.url === "string" ? body.url.trim() : "";
@@ -20,6 +52,30 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Invalid Instagram post URL." },
         { status: 400 }
+      );
+    }
+
+    // Check if recipe already exists
+    const existingRecipe = await findRecipeByUrl(url);
+    if (existingRecipe) {
+      return NextResponse.json(
+        {
+          error: "This recipe has already been added.",
+          recipeId: existingRecipe.id,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Check if there's already a pending import for this URL
+    const pendingImport = await findPendingImportByUrl(url);
+    if (pendingImport) {
+      return NextResponse.json(
+        {
+          error: "This recipe is already being processed.",
+          importId: pendingImport.id,
+        },
+        { status: 409 }
       );
     }
 

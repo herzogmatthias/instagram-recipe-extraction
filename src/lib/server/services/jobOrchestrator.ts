@@ -97,6 +97,10 @@ export async function processRecipeImport(
     if (!currentImport) {
       throw new Error(`Import ${importId} not found during transition`);
     }
+
+    // Check if import has been cancelled
+    await checkIfCancelled(importId);
+
     currentStage = nextStage;
     const payload = buildStageUpdatePayload(currentImport, options);
     currentImport = await STAGE_SETTERS[nextStage](importId, payload);
@@ -312,6 +316,19 @@ function resolveGeminiFileUri(file: {
   return file?.uri ?? file?.name ?? null;
 }
 
+async function checkIfCancelled(importId: string): Promise<void> {
+  const freshImport = await getImport(importId);
+  if (!freshImport) {
+    throw new Error(`Import ${importId} not found`);
+  }
+  if (
+    freshImport.status === "failed" &&
+    freshImport.error === "Import cancelled by user"
+  ) {
+    throw new Error("Import cancelled by user");
+  }
+}
+
 async function runWithRetries<T>(
   importId: string,
   label: string,
@@ -321,6 +338,9 @@ async function runWithRetries<T>(
   let lastError: unknown;
 
   while (attempt < MAX_STAGE_ATTEMPTS) {
+    // Check for cancellation before each attempt
+    await checkIfCancelled(importId);
+
     attempt += 1;
     try {
       console.info(`[import ${importId}] ${label} (attempt ${attempt})`);
