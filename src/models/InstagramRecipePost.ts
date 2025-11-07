@@ -1,10 +1,7 @@
 // ===== Recipe (standalone) =====
 
 export interface RecipeData {
-  $schema?: string;
-  $id?: string;
   title: string;
-  ref_id?: string;
   servings?: {
     value: number;
     note?: string;
@@ -14,7 +11,6 @@ export interface RecipeData {
   total_time_min?: number;
   difficulty?: "easy" | "medium" | "hard" | string;
   cuisine?: string;
-  tags?: string[];
   macros_per_serving?: Macros | null;
   confidence?: number;
   ingredients: Ingredient[];

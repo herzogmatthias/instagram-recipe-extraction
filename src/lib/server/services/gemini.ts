@@ -3,9 +3,9 @@ import type { File as GeminiFile } from "@google/genai";
 import type { CommentThread, RecipeData } from "@/models/InstagramRecipePost";
 import {
   getRecipeResponseSchema,
-  type RecipeValidationIssue,
-  validateRecipeData,
+  parseRecipeDataResult,
 } from "@/lib/shared/utils/recipeValidator";
+import { SYSTEM_PROMPT } from "@/lib/shared/constants/llm";
 
 export type GeminiUploadErrorCode =
   | "MISSING_API_KEY"
@@ -41,10 +41,6 @@ export interface ExtractRecipeOptions {
 
 export interface RecipeExtractionResult {
   recipe: RecipeData;
-  confidence: number;
-  issues: RecipeValidationIssue[];
-  rawText: string;
-  reasoning?: string[];
 }
 
 export class GeminiUploadError extends Error {
@@ -197,278 +193,87 @@ export async function waitForGeminiFile(
 }
 
 export async function extractRecipe(
-  params: ExtractRecipeParams,
-  options?: ExtractRecipeOptions
-): Promise<RecipeExtractionResult> {
+  params: ExtractRecipeParams
+): Promise<{ recipe: RecipeData }> {
   const client = initializeGemini();
-  const maxAttempts = options?.maxAttempts ?? MAX_EXTRACTION_ATTEMPTS;
-  let lastError: GeminiExtractionError | null = null;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  let lastErr: unknown;
+
+  for (let attempt = 1; attempt <= MAX_EXTRACTION_ATTEMPTS; attempt++) {
     try {
-      const response = await client.models.generateContent({
+      const resp = await client.models.generateContent({
         model: DEFAULT_RECIPE_MODEL,
         contents: [
           {
             role: "user",
             parts: [
-              { text: buildRecipePrompt(params) },
-              {
+              { text: buildUserPrompt(params) },
+              params.geminiFileUri && {
                 fileData: {
                   fileUri: params.geminiFileUri,
                   mimeType: params.mediaMimeType ?? "application/octet-stream",
                 },
               },
-            ],
+            ].filter(
+              (
+                part
+              ): part is
+                | { text: string }
+                | { fileData: { fileUri: string; mimeType: string } } =>
+                Boolean(part)
+            ),
           },
         ],
         config: {
+          systemInstruction: SYSTEM_PROMPT,
           temperature: DEFAULT_EXTRACTION_TEMPERATURE,
           responseMimeType: "application/json",
+          responseSchema: recipeResponseSchema, // <- flat RecipeData schema
           maxOutputTokens: 10000,
-          responseSchema: recipeResponseSchema,
         },
       });
 
-      const rawText = extractResponseText(response);
-      const payload = parseRecipePayload(rawText);
-      const candidate = pickRecipeCandidate(payload);
-      const validation = validateRecipeData(candidate);
+      const raw = resp.text?.trim();
+      if (!raw) throw new Error("Empty response");
 
-      if (!validation.valid || !validation.recipe) {
-        throw new GeminiExtractionError(
-          "VALIDATION_FAILED",
-          validation.issues[0]?.message ?? "Recipe JSON failed validation"
-        );
+      let json: unknown;
+      try {
+        json = JSON.parse(raw);
+      } catch (e) {
+        // Only case we consider retry-worthy
+        if (attempt < MAX_EXTRACTION_ATTEMPTS) {
+          lastErr = e;
+          continue;
+        }
+        throw e;
       }
 
-      const normalizedRecipe: RecipeData = {
-        ...validation.recipe,
-        confidence: validation.confidence ?? validation.recipe.confidence,
-      };
-
-      return {
-        recipe: normalizedRecipe,
-        confidence: normalizedRecipe.confidence ?? 0,
-        issues: validation.issues,
-        rawText,
-        reasoning: Array.isArray(payload?.reasoning)
-          ? payload.reasoning.filter(
-              (entry: unknown): entry is string => typeof entry === "string"
-            )
-          : undefined,
-      };
-    } catch (error) {
-      const extractionError =
-        error instanceof GeminiExtractionError
-          ? error
-          : wrapExtractionError(error);
-      lastError = extractionError;
-
-      const shouldRetry =
-        attempt < maxAttempts &&
-        ["INVALID_JSON", "VALIDATION_FAILED"].includes(extractionError.code);
-
-      if (!shouldRetry) {
-        throw extractionError;
+      const parsed = parseRecipeDataResult(json);
+      if (!parsed.valid) {
+        // Treat schema mismatch as final (fix prompt/schema instead of looping forever)
+        const reasons = parsed.issues.slice(0, 3).join(" | ");
+        throw new Error(`RecipeData validation failed: ${reasons}`);
       }
+
+      return { recipe: parsed.recipe };
+    } catch (e) {
+      lastErr = e;
+      if (attempt >= MAX_EXTRACTION_ATTEMPTS) throw e;
     }
   }
 
-  throw (
-    lastError ??
-    new GeminiExtractionError(
-      "GENERATION_FAILED",
-      "Gemini extraction failed unexpectedly"
-    )
-  );
+  // Shouldn’t reach here, but for completeness:
+  throw lastErr ?? new Error("Gemini extraction failed");
 }
 
-function wrapExtractionError(error: unknown): GeminiExtractionError {
-  if (error instanceof GeminiExtractionError) {
-    return error;
-  }
-
-  if (error instanceof SyntaxError) {
-    return new GeminiExtractionError(
-      "INVALID_JSON",
-      "Gemini returned invalid JSON",
-      {
-        cause: error,
-      }
-    );
-  }
-
-  return new GeminiExtractionError(
-    "GENERATION_FAILED",
-    "Gemini request failed",
-    {
-      cause: error,
-    }
-  );
-}
-
-function extractResponseText(response: { text?: string }) {
-  if (response.text && response.text.trim().length > 0) {
-    return response.text;
-  }
-
-  throw new GeminiExtractionError(
-    "GENERATION_FAILED",
-    "Gemini response missing text payload"
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseRecipePayload(rawText: string): any {
-  if (!rawText || rawText.trim().length === 0) {
-    throw new GeminiExtractionError("NO_RECIPE", "Gemini response was empty");
-  }
-
-  try {
-    return JSON.parse(rawText);
-  } catch (error) {
-    // Save the invalid response for debugging
-    // const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    // const debugPath = path.join(
-    //   ".",
-    //   "tmp",
-    //   `gemini-response-${timestamp}.json`
-    // );
-
-    // try {
-    //   const dir = path.dirname(debugPath);
-    //   if (!fs.existsSync(dir)) {
-    //     fs.mkdirSync(dir, { recursive: true });
-    //   }
-    //   fs.writeFileSync(debugPath, rawText, "utf-8");
-    //   console.error(`[Gemini] Invalid JSON saved to: ${debugPath}`);
-    //   console.error(`[Gemini] Raw response length: ${rawText.length} chars`);
-    //   console.error(`[Gemini] First 500 chars: ${rawText.substring(0, 500)}`);
-    // } catch (writeError) {
-    //   console.error("[Gemini] Failed to save debug response:", writeError);
-    // }
-
-    throw new GeminiExtractionError(
-      "INVALID_JSON",
-      `Gemini returned invalid JSON`,
-      { cause: error }
-    );
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pickRecipeCandidate(payload: any) {
-  if (!payload) {
-    throw new GeminiExtractionError(
-      "NO_RECIPE",
-      "Gemini response missing recipe"
-    );
-  }
-
-  const assembled = assembleRecipeFromEnvelope(payload);
-  if (assembled) {
-    return assembled;
-  }
-
-  if (Array.isArray(payload)) {
-    if (payload.length === 0) {
-      throw new GeminiExtractionError(
-        "NO_RECIPE",
-        "Gemini returned an empty recipe list"
-      );
-    }
-    if (payload.length > 1) {
-      throw new GeminiExtractionError(
-        "AMBIGUOUS_RECIPE",
-        "Gemini returned multiple recipes; please disambiguate"
-      );
-    }
-    return assembleRecipeFromEnvelope(payload[0]) ?? payload[0];
-  }
-
-  if (Array.isArray(payload.recipes)) {
-    if (payload.recipes.length === 0) {
-      throw new GeminiExtractionError(
-        "NO_RECIPE",
-        "Gemini indicated no recipe was found"
-      );
-    }
-    if (payload.recipes.length > 1) {
-      throw new GeminiExtractionError(
-        "AMBIGUOUS_RECIPE",
-        "Gemini returned multiple recipes; please disambiguate"
-      );
-    }
-    return (
-      assembleRecipeFromEnvelope(payload.recipes[0]) ?? payload.recipes[0]
-    );
-  }
-
-  if (payload.recipe) {
-    return (
-      assembleRecipeFromEnvelope(payload) ??
-      payload.recipe
-    );
-  }
-
-  if (looksLikeRecipe(payload)) {
-    return payload;
-  }
-
-  throw new GeminiExtractionError(
-    "NO_RECIPE",
-    "Gemini response missing recognizable recipe data"
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function assembleRecipeFromEnvelope(candidate: any) {
-  if (
-    candidate &&
-    typeof candidate === "object" &&
-    candidate.recipe &&
-    Array.isArray(candidate.ingredients) &&
-    Array.isArray(candidate.steps)
-  ) {
-    return {
-      ...candidate.recipe,
-      ingredients: candidate.ingredients,
-      steps: candidate.steps,
-    };
-  }
-  return null;
-}
-
-function looksLikeRecipe(candidate: unknown) {
-  if (!candidate || typeof candidate !== "object") {
-    return false;
-  }
-
-  const maybeRecipe = candidate as Partial<RecipeData>;
-  return (
-    typeof maybeRecipe.title === "string" &&
-    Array.isArray(maybeRecipe.ingredients) &&
-    Array.isArray(maybeRecipe.steps)
-  );
-}
-
-function buildRecipePrompt(params: ExtractRecipeParams) {
-  const segments = [
-    "You are a culinary assistant that extracts structured recipes from Instagram content. Respond with JSON only using the structured output schema provided to you - no Markdown.",
-    "If the recipe is in another language than English, translate it to english as best as you can.",
-    "Use the caption as the primary source. If ingredients or steps are missing there, inspect the provided media reference to infer them and describe that inference inside the `assumptions` array.",
-    "Ensure ingredient ids are unique strings, include measurement details when visible, and keep instructions concise but complete.",
-  ];
+function buildUserPrompt(params: ExtractRecipeParams) {
+  const parts: string[] = [];
 
   if (params.caption) {
-    segments.push(`Caption:\n${params.caption}`);
+    parts.push(`CAPTION\n${params.caption}`);
   }
-
   if (params.hashtags?.length) {
-    segments.push(
-      `Hashtags: ${params.hashtags.map((tag) => `#${tag}`).join(" ")}`
-    );
+    parts.push(`HASHTAGS\n${params.hashtags.map((t) => `#${t}`).join(" ")}`);
   }
 
   const ownerComments = collectOwnerComments(
@@ -476,18 +281,17 @@ function buildRecipePrompt(params: ExtractRecipeParams) {
     params.latestComments
   );
   if (ownerComments.length) {
-    segments.push(
-      `Author comments referencing the recipe:\n${ownerComments
-        .map((comment) => `- ${comment}`)
-        .join("\n")}`
+    parts.push(
+      `AUTHOR COMMENTS\n${ownerComments.map((c) => `- ${c}`).join("\n")}`
     );
   }
 
-  segments.push(
-    "If no clear recipe is visible, respond with an empty `recipes` array. Do not invent ingredients or steps."
+  parts.push(
+    `MEDIA\nA media file is attached; use it only to infer missing specifics (quantities, doneness, timings).`
   );
+  parts.push(`Now extract the recipe.`);
 
-  return segments.join("\n\n");
+  return parts.join("\n\n");
 }
 
 function collectOwnerComments(

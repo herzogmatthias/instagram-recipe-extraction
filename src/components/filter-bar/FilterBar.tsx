@@ -291,7 +291,7 @@ export function FilterBar({
           )}
         >
           {/* Cuisine filter dropdown */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -346,7 +346,7 @@ export function FilterBar({
           </DropdownMenu>
 
           {/* Tags filter dropdown */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -401,7 +401,7 @@ export function FilterBar({
           </DropdownMenu>
 
           {/* Difficulty filter dropdown */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"

@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "*.fna.fbcdn.net", // covers instagram.fosu2-2.fna.fbcdn.net, etc.
+      },
+      {
+        protocol: "https",
         hostname: "*.cdninstagram.com",
       },
       {

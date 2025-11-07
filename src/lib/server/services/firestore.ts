@@ -39,6 +39,13 @@ import type { RecipeImportDocument } from "@/models/RecipeImport";
 
 const IMPORTS_COLLECTION = "imports";
 const RECIPES_COLLECTION = "recipes";
+const VARIANTS_SUBCOLLECTION = "variants";
+
+declare global {
+  var __ADMIN_APP__: App | undefined;
+  var __ADMIN_DB__: AdminFirestore | undefined;
+  var __ADMIN_DB_SETTINGS_APPLIED__: boolean | undefined;
+}
 
 type RecipeImportFirestoreRecord = Omit<
   RecipeImportDocument,
@@ -80,8 +87,6 @@ export type UpdateImportInput = Partial<
 export type RecipeUpsertInput = Partial<RecipeDocument> &
   Pick<RecipeDocument, "inputUrl"> & { id?: string };
 
-let firestoreInstance: AdminFirestore | null = null;
-
 function resolveServiceAccount(): ServiceAccount | undefined {
   const credentialsPath = path.resolve(
     process.cwd(),
@@ -102,35 +107,31 @@ function resolveServiceAccount(): ServiceAccount | undefined {
   return account;
 }
 
-function initializeFirebaseAdmin(): App {
-  const existingApps = getApps();
-  if (existingApps.length > 0) {
-    return existingApps[0]!;
-  }
-
-  const serviceAccount = resolveServiceAccount();
-
-  if (serviceAccount) {
-    return initializeApp({ credential: cert(serviceAccount) });
-  }
-
-  // Fallback: use project ID from environment if no service account
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!projectId) {
-    throw new Error(
-      "Firebase Admin initialization failed: Either GOOGLE_APPLICATION_CREDENTIALS, FIREBASE_SERVICE_ACCOUNT, or NEXT_PUBLIC_FIREBASE_PROJECT_ID must be configured"
-    );
-  }
-
-  return initializeApp({ projectId });
-}
-
 export function getFirestore(): AdminFirestore {
-  if (!firestoreInstance) {
-    const app = initializeFirebaseAdmin();
-    firestoreInstance = getAdminFirestore(app);
+  // 1) App: create once or reuse default
+  if (!globalThis.__ADMIN_APP__) {
+    if (getApps().length === 0) {
+      const sa = resolveServiceAccount();
+      globalThis.__ADMIN_APP__ = sa
+        ? initializeApp({ credential: cert(sa) })
+        : initializeApp(); // uses ADC if available
+    } else {
+      globalThis.__ADMIN_APP__ = getApps()[0]!;
+    }
   }
-  return firestoreInstance;
+
+  // 2) Firestore: create once
+  if (!globalThis.__ADMIN_DB__) {
+    globalThis.__ADMIN_DB__ = getAdminFirestore(globalThis.__ADMIN_APP__);
+  }
+
+  // 3) Settings: apply ONCE, before any use
+  if (!globalThis.__ADMIN_DB_SETTINGS_APPLIED__) {
+    globalThis.__ADMIN_DB__!.settings({ ignoreUndefinedProperties: true });
+    globalThis.__ADMIN_DB_SETTINGS_APPLIED__ = true;
+  }
+
+  return globalThis.__ADMIN_DB__!;
 }
 
 export function getImportsCollection(): CollectionReference<RecipeImportFirestoreRecord> {
@@ -387,6 +388,187 @@ export async function listRecipes(options?: ListRecipesOptions): Promise<{
   return { recipes, nextCursor };
 }
 
+// ==================== Variant CRUD Operations ====================
+
+export type RecipeVariantDocument = {
+  id: string;
+  recipeId: string;
+  name: string;
+  isOriginal: boolean;
+  recipe_data: InstagramRecipePost["recipe_data"];
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type RecipeVariantFirestoreRecord = Omit<
+  RecipeVariantDocument,
+  "id" | "createdAt" | "updatedAt"
+> & {
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+export type CreateVariantInput = {
+  recipeId: string;
+  name: string;
+  recipe_data: InstagramRecipePost["recipe_data"];
+  isOriginal?: boolean;
+};
+
+function getVariantsCollection(
+  recipeId: string
+): CollectionReference<RecipeVariantFirestoreRecord> {
+  return getRecipesCollection()
+    .doc(recipeId)
+    .collection(
+      VARIANTS_SUBCOLLECTION
+    ) as CollectionReference<RecipeVariantFirestoreRecord>;
+}
+
+/**
+ * Create a new recipe variant
+ * @param input - Variant data with recipeId, name, and recipe_data
+ * @returns The created variant document
+ */
+export async function createVariant(
+  input: CreateVariantInput
+): Promise<RecipeVariantDocument> {
+  if (!input.recipeId) {
+    throw new Error("createVariant: recipeId is required");
+  }
+  if (!input.name) {
+    throw new Error("createVariant: name is required");
+  }
+  if (!input.recipe_data) {
+    throw new Error("createVariant: recipe_data is required");
+  }
+
+  const collection = getVariantsCollection(input.recipeId);
+  const docRef = collection.doc();
+  const now = Timestamp.now();
+
+  const payload: RecipeVariantFirestoreRecord = {
+    recipeId: input.recipeId,
+    name: input.name,
+    isOriginal: input.isOriginal ?? false,
+    recipe_data: input.recipe_data,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await docRef.set(payload);
+  const snapshot = await docRef.get();
+  return deserializeVariant(snapshot);
+}
+
+/**
+ * List all variants for a recipe
+ * @param recipeId - The recipe ID
+ * @returns Array of variant documents
+ */
+export async function listVariants(
+  recipeId: string
+): Promise<RecipeVariantDocument[]> {
+  if (!recipeId) {
+    throw new Error("listVariants: recipeId is required");
+  }
+
+  const collection = getVariantsCollection(recipeId);
+  const snapshot = await collection.orderBy("createdAt", "asc").get();
+
+  return snapshot.docs.map((doc) => deserializeVariant(doc));
+}
+
+/**
+ * Delete a variant. Guards against deleting the original variant.
+ * @param recipeId - The recipe ID
+ * @param variantId - The variant ID to delete
+ * @throws Error if attempting to delete the original variant
+ */
+export async function deleteVariant(
+  recipeId: string,
+  variantId: string
+): Promise<void> {
+  if (!recipeId) {
+    throw new Error("deleteVariant: recipeId is required");
+  }
+  if (!variantId) {
+    throw new Error("deleteVariant: variantId is required");
+  }
+
+  const docRef = getVariantsCollection(recipeId).doc(variantId);
+  const snapshot = await docRef.get();
+
+  if (!snapshot.exists) {
+    throw new Error(`Variant ${variantId} not found`);
+  }
+
+  const data = snapshot.data();
+  if (data?.isOriginal) {
+    throw new Error("Cannot delete the original variant");
+  }
+
+  await docRef.delete();
+}
+
+/**
+ * Update a variant's name
+ * @param recipeId - The recipe ID
+ * @param variantId - The variant ID to update
+ * @param name - The new name
+ * @returns The updated variant document
+ */
+export async function updateVariantName(
+  recipeId: string,
+  variantId: string,
+  name: string
+): Promise<RecipeVariantDocument> {
+  if (!recipeId) {
+    throw new Error("updateVariantName: recipeId is required");
+  }
+  if (!variantId) {
+    throw new Error("updateVariantName: variantId is required");
+  }
+  if (!name) {
+    throw new Error("updateVariantName: name is required");
+  }
+
+  const docRef = getVariantsCollection(recipeId).doc(variantId);
+  const snapshot = await docRef.get();
+
+  if (!snapshot.exists) {
+    throw new Error(`Variant ${variantId} not found`);
+  }
+
+  await docRef.update({
+    name,
+    updatedAt: Timestamp.now(),
+  });
+
+  const updatedSnapshot = await docRef.get();
+  return deserializeVariant(updatedSnapshot);
+}
+
+function deserializeVariant(
+  snapshot: FirebaseFirestore.DocumentSnapshot<RecipeVariantFirestoreRecord>
+): RecipeVariantDocument {
+  const data = snapshot.data();
+  if (!data) {
+    throw new Error(`Variant ${snapshot.id} has no data`);
+  }
+  return {
+    id: snapshot.id,
+    recipeId: data.recipeId,
+    name: data.name,
+    isOriginal: data.isOriginal,
+    recipe_data: data.recipe_data,
+    createdAt: toIsoString(data.createdAt),
+    updatedAt: toIsoString(data.updatedAt),
+  };
+}
+
+// ==================== Helper Functions ====================
+
 function deserializeImport(
   snapshot: FirebaseFirestore.DocumentSnapshot<RecipeImportFirestoreRecord>
 ): RecipeImportDocument {
@@ -445,9 +627,7 @@ function toIsoString(value?: unknown): string | undefined {
   return undefined;
 }
 
-function expandRecipeDocument(
-  doc: RecipeDocument
-): InstagramRecipePost {
+function expandRecipeDocument(doc: RecipeDocument): InstagramRecipePost {
   const fallbackStepMedia =
     doc.recipe_data?.steps
       ?.map((step) => step.chefs_note)
@@ -480,8 +660,7 @@ function expandRecipeDocument(
     likesCount: doc.likesCount ?? 0,
     videoViewCount: doc.videoViewCount ?? null,
     videoPlayCount: doc.videoPlayCount ?? null,
-    timestamp:
-      doc.timestamp ?? doc.createdAt ?? new Date().toISOString(),
+    timestamp: doc.timestamp ?? doc.createdAt ?? new Date().toISOString(),
     childPosts: doc.childPosts ?? [],
     ownerFullName: doc.ownerFullName ?? null,
     ownerUsername: doc.ownerUsername ?? "unknown",
@@ -496,7 +675,6 @@ function expandRecipeDocument(
     progress: typeof doc.progress === "number" ? doc.progress : 100,
     error: doc.error,
     createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
   };
 }
 
@@ -516,11 +694,4 @@ function coerceTimestamp(
     return Timestamp.fromDate(new Date(value));
   }
   return undefined;
-}
-
-/**
- * Testing helper to reset cached Firestore references between test cases.
- */
-export function __resetFirestoreForTests() {
-  firestoreInstance = null;
 }

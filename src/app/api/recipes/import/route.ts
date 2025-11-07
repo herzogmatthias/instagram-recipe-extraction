@@ -6,7 +6,7 @@ import {
   findPendingImportByUrl,
   listImports,
 } from "@/lib/server/services/firestore";
-import { processRecipeImport } from "@/lib/server/services/jobOrchestrator";
+import { processRecipeImport } from "@/lib/server/services/orchestration";
 import { extractInstagramShortCode } from "@/lib/shared/utils/recipeHelpers";
 
 export async function GET(request: NextRequest) {

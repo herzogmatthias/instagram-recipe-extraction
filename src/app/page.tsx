@@ -164,8 +164,8 @@ export default function Home() {
       if (recipe.recipe_data?.cuisine) {
         cuisineSet.add(recipe.recipe_data.cuisine);
       }
-      if (recipe.recipe_data?.tags) {
-        recipe.recipe_data.tags.forEach((tag: string) => {
+      if (recipe.hashtags) {
+        recipe.hashtags.forEach((tag: string) => {
           if (tag && tag.trim()) {
             tagSet.add(tag.trim());
           }
@@ -208,7 +208,7 @@ export default function Home() {
       }
 
       if (filters.selectedTags.length > 0) {
-        const recipeTags = recipe.recipe_data?.tags;
+        const recipeTags = recipe.hashtags;
         if (!recipeTags || recipeTags.length === 0) {
           return false;
         }

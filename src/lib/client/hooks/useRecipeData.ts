@@ -65,13 +65,11 @@ export function useRecipeData(): UseRecipeDataReturn {
 
 function normalizeRecipeDoc(doc: Record<string, unknown>): InstagramRecipePost {
   const createdAt = toIsoString(doc.createdAt);
-  const updatedAt = toIsoString(doc.updatedAt);
 
   return {
-    ...(doc as InstagramRecipePost),
+    ...(doc as unknown as InstagramRecipePost),
     id: typeof doc.id === "string" ? doc.id : "",
     createdAt: createdAt ?? (doc.timestamp as string | undefined),
-    updatedAt: updatedAt ?? undefined,
     status: (doc.status as RecipeStatus | undefined) ?? "ready",
     progress: typeof doc.progress === "number" ? doc.progress : 100,
   };

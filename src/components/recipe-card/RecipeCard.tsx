@@ -66,8 +66,8 @@ export function RecipeCard({
   }
   const title = computedTitle || titleRef.current || "Untitled Recipe";
   const metaPills = formatMetaPills(recipe);
-  const displayTags = recipe.recipe_data?.tags?.slice(0, 3) || [];
-  const remainingTagsCount = (recipe.recipe_data?.tags?.length || 0) - 3;
+  const displayTags = recipe.hashtags?.slice(0, 3) || [];
+  const remainingTagsCount = (recipe.hashtags?.length || 0) - 3;
   const hasRecipeData = Boolean(recipe.recipe_data);
   const hasIngredients = Boolean(recipe.recipe_data?.ingredients?.length);
   const hasSteps = Boolean(recipe.recipe_data?.steps?.length);
@@ -339,7 +339,7 @@ export function RecipeCard({
               <Download className="h-5 w-5" />
             </Button>
           </div>
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"

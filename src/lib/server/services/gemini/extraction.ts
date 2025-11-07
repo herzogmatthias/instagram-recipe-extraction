@@ -1,0 +1,132 @@
+import type { RecipeData } from "@/models/InstagramRecipePost";
+import {
+  getRecipeResponseSchema,
+  parseRecipeDataResult,
+} from "@/lib/shared/utils/recipeValidator";
+import { SYSTEM_PROMPT } from "@/lib/shared/constants/llm";
+import { initializeGemini } from "./client";
+import {
+  DEFAULT_RECIPE_MODEL,
+  DEFAULT_EXTRACTION_TEMPERATURE,
+  MAX_EXTRACTION_ATTEMPTS,
+} from "./client";
+import type { ExtractRecipeParams } from "./types";
+
+export async function extractRecipe(
+  params: ExtractRecipeParams
+): Promise<{ recipe: RecipeData }> {
+  const client = initializeGemini();
+  const recipeResponseSchema = getRecipeResponseSchema();
+
+  let lastErr: unknown;
+
+  for (let attempt = 1; attempt <= MAX_EXTRACTION_ATTEMPTS; attempt++) {
+    try {
+      const resp = await client.models.generateContent({
+        model: DEFAULT_RECIPE_MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: buildUserPrompt(params) },
+              params.geminiFileUri && {
+                fileData: {
+                  fileUri: params.geminiFileUri,
+                  mimeType: params.mediaMimeType ?? "application/octet-stream",
+                },
+              },
+            ].filter(
+              (
+                part
+              ): part is
+                | { text: string }
+                | { fileData: { fileUri: string; mimeType: string } } =>
+                Boolean(part)
+            ),
+          },
+        ],
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          temperature: DEFAULT_EXTRACTION_TEMPERATURE,
+          responseMimeType: "application/json",
+          responseSchema: recipeResponseSchema,
+          maxOutputTokens: 10000,
+        },
+      });
+
+      const raw = resp.text?.trim();
+      if (!raw) throw new Error("Empty response");
+
+      let json: unknown;
+      try {
+        json = JSON.parse(raw);
+      } catch (e) {
+        if (attempt < MAX_EXTRACTION_ATTEMPTS) {
+          lastErr = e;
+          continue;
+        }
+        throw e;
+      }
+
+      const parsed = parseRecipeDataResult(json);
+      if (!parsed.valid) {
+        const reasons = parsed.issues.slice(0, 3).join(" | ");
+        throw new Error(`RecipeData validation failed: ${reasons}`);
+      }
+
+      return { recipe: parsed.recipe };
+    } catch (e) {
+      lastErr = e;
+      if (attempt >= MAX_EXTRACTION_ATTEMPTS) throw e;
+    }
+  }
+
+  throw lastErr ?? new Error("Gemini extraction failed");
+}
+
+function buildUserPrompt(params: ExtractRecipeParams): string {
+  const parts: string[] = [];
+
+  if (params.caption) {
+    parts.push(`CAPTION\n${params.caption}`);
+  }
+  if (params.hashtags?.length) {
+    parts.push(`HASHTAGS\n${params.hashtags.map((t) => `#${t}`).join(" ")}`);
+  }
+
+  const ownerComments = collectOwnerComments(
+    params.ownerUsername,
+    params.latestComments
+  );
+  if (ownerComments.length) {
+    parts.push(
+      `AUTHOR COMMENTS\n${ownerComments.map((c) => `- ${c}`).join("\n")}`
+    );
+  }
+
+  parts.push(
+    `MEDIA\nA media file is attached; use it only to infer missing specifics (quantities, doneness, timings).`
+  );
+  parts.push(`Now extract the recipe.`);
+
+  return parts.join("\n\n");
+}
+
+function collectOwnerComments(
+  ownerUsername?: string,
+  comments?: import("@/models/InstagramRecipePost").CommentThread[]
+): string[] {
+  if (!ownerUsername || !Array.isArray(comments)) {
+    return [];
+  }
+
+  return comments
+    .filter(
+      (comment) =>
+        comment.ownerUsername === ownerUsername &&
+        typeof comment.text === "string" &&
+        comment.text.trim().length > 0
+    )
+    .map((comment) => comment.text.trim())
+    .slice(0, 3);
+}

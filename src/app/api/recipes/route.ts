@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { RecipeStatus } from "@/models/InstagramRecipePost";
-import { listRecipes } from "@/lib/server/services/firestore";
+import { listRecipes } from "@/lib/server/services/firestore/index";
 
 const VALID_STATUSES: RecipeStatus[] = [
   "queued",

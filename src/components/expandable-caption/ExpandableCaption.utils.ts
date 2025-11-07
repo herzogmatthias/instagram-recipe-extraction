@@ -1,0 +1,1 @@
+export const DEFAULT_COLLAPSED_LENGTH = 50;

@@ -2,18 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { cache } from "react";
-import {
-  RecipeDetailHeader,
-  RecipeMediaCard,
-  RecipeMediaInline,
-  RecipeMetaStrip,
-  WatchReelFab,
-  IngredientPanel,
-  StepsPanel,
-  CookModeDialog,
-} from "@/components/recipe-detail";
+import { RecipeDetailHeader } from "@/components/recipe-detail-header/RecipeDetailHeader";
+import { RecipeMediaCard } from "@/components/recipe-media-card/RecipeMediaCard";
+import { RecipeMediaInline } from "@/components/recipe-media-inline/RecipeMediaInline";
+import { RecipeMetaStrip } from "@/components/recipe-meta-strip/RecipeMetaStrip";
+import { WatchReelFab } from "@/components/watch-reel-fab/WatchReelFab";
+import { IngredientPanel } from "@/components/ingredient-panel/IngredientPanel";
+import { StepsPanel } from "@/components/steps-panel/StepsPanel";
+import { CookModeDialog } from "@/components/cook-mode-dialog/CookModeDialog";
 import { fetchRecipeDetail } from "@/lib/server/services/firestore";
-import { cn } from "@/lib/utils";
+import { RecipeMacrosCard } from "@/components/recipe-macros-card/RecipeMacrosCard";
+import { RecipeQuickActions } from "@/components/recipe-quick-actions/RecipeQuickActions";
+import { RecipeSourceQualityCard } from "@/components/recipe-source-quality-card/RecipeSourceQualityCard";
+//
 import { RecipeDetailProvider } from "@/lib/state/recipeDetailStore";
 
 const getRecipeDetail = cache(fetchRecipeDetail);
@@ -78,9 +79,9 @@ export default async function RecipeDetailPage({ params }: PageProps) {
                   className="sticky top-20 hidden md:block"
                 />
               )}
-              <PlaceholderCard title="Macros & variants" compact />
-              <PlaceholderCard title="Quick actions & quality" compact />
-              <PlaceholderCard title="Source info" compact />
+              <RecipeMacrosCard recipe={recipe} />
+              <RecipeQuickActions recipe={recipe} />
+              <RecipeSourceQualityCard recipe={recipe} />
             </aside>
           </div>
         </div>
@@ -106,25 +107,4 @@ function PendingBanner() {
   );
 }
 
-function PlaceholderCard({
-  title,
-  compact = false,
-}: {
-  title: string;
-  compact?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-dashed border-border/80 bg-card/80 text-sm text-muted-foreground",
-        compact ? "px-4 py-4" : "px-6 py-8"
-      )}
-    >
-      <p className="font-medium text-foreground">{title}</p>
-      <p className="mt-2 text-muted-foreground">
-        This section will arrive in the next iteration to power the full cooking
-        workflow.
-      </p>
-    </div>
-  );
-}
+// PlaceholderCard removed after implementing real sidebar components.

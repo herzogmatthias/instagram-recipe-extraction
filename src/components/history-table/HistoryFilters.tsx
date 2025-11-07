@@ -46,7 +46,7 @@ export function HistoryFiltersComponent({
       </div>
 
       {/* Status Filter */}
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-9">
             Status

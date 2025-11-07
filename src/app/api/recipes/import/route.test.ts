@@ -2,19 +2,22 @@
 
 import { POST } from "./route";
 import { createImport } from "@/lib/server/services/firestore";
-import { processRecipeImport } from "@/lib/server/services/jobOrchestrator";
+import { processRecipeImport } from "@/lib/server/services/orchestration";
 
 jest.mock("@/lib/server/services/firestore", () => ({
   createImport: jest.fn(),
 }));
 
-jest.mock("@/lib/server/services/jobOrchestrator", () => ({
+jest.mock("@/lib/server/services/orchestration", () => ({
   processRecipeImport: jest.fn(() => Promise.resolve()),
 }));
 
-const mockedCreateImport = createImport as jest.MockedFunction<typeof createImport>;
-const mockedProcessImport =
-  processRecipeImport as jest.MockedFunction<typeof processRecipeImport>;
+const mockedCreateImport = createImport as jest.MockedFunction<
+  typeof createImport
+>;
+const mockedProcessImport = processRecipeImport as jest.MockedFunction<
+  typeof processRecipeImport
+>;
 
 describe("/api/recipes/import", () => {
   beforeEach(() => {

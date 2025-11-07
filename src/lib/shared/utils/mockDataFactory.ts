@@ -40,7 +40,6 @@ export function createMockRecipeData(
       fat_g: 10,
       carbs_g: 50,
     },
-    tags: ["healthy", "quick"],
     ...overrides,
   };
 }

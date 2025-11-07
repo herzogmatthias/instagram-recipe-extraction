@@ -9,7 +9,12 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  type Unsubscribe,
+  type Firestore,
+} from "firebase/firestore";
 import { getClientFirestore } from "@/lib/client/firebase";
 import type { RecipeStatus } from "@/models/InstagramRecipePost";
 import type { RecipeImportDocument } from "@/models/RecipeImport";
@@ -44,7 +49,7 @@ const ProcessingQueueContext = createContext<UseProcessingQueueReturn | null>(
 export function ProcessingQueueProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const listenerMap = useRef<Map<string, Unsubscribe>>(new Map());
-  const firestoreRef = useRef<ReturnType<typeof getClientFirestore>>();
+  const firestoreRef = useRef<Firestore | undefined>(undefined);
 
   const ensureFirestore = useCallback(() => {
     if (firestoreRef.current) {

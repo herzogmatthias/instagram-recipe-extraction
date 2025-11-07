@@ -5,12 +5,14 @@ import { useRouter, usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 import { useProcessingQueue } from "@/lib/client/hooks/useProcessingQueue";
 import { toast } from "sonner";
+import type { RecipeImportDocument } from "@/models/RecipeImport";
 
 export function NavbarWrapper() {
   const router = useRouter();
   const pathname = usePathname();
   const [isProcessingPopoverOpen, setProcessingPopoverOpen] = useState(false);
-  const { queue: processingQueue, removeFromQueue } = useProcessingQueue();
+  const { queue: processingQueue, removeFromQueue, addToQueue } =
+    useProcessingQueue();
 
   const handleAddRecipe = useCallback(() => {
     // Navigate to home page if not already there
@@ -33,25 +35,34 @@ export function NavbarWrapper() {
 
   const handleRemoveFromQueue = useCallback(
     async (id: string) => {
-      try {
-        const response = await fetch(`/api/recipes/import/${id}`, {
-          method: "DELETE",
-        });
+      const item = processingQueue.find((queueItem) => queueItem.id === id);
+      const isTerminal =
+        item && (item.status === "ready" || item.status === "failed");
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to cancel import");
+      try {
+        if (!isTerminal) {
+          const response = await fetch(`/api/recipes/import/${id}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || "Failed to cancel import");
+          }
         }
 
         removeFromQueue(id);
-        toast.success("Import cancelled");
+        toast.success(isTerminal ? "Removed from queue" : "Import cancelled");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to cancel import";
         toast.error(message);
+        if (isTerminal) {
+          removeFromQueue(id);
+        }
       }
     },
-    [removeFromQueue]
+    [processingQueue, removeFromQueue]
   );
 
   const handleRetryFromQueue = useCallback(
@@ -73,7 +84,11 @@ export function NavbarWrapper() {
           throw new Error(errorData.error || "Failed to retry import");
         }
 
+        const newImportDoc =
+          (await response.json()) as RecipeImportDocument;
+
         removeFromQueue(id);
+        addToQueue(newImportDoc);
         toast.success("Import restarted");
       } catch (err) {
         const message =
@@ -81,7 +96,7 @@ export function NavbarWrapper() {
         toast.error(message);
       }
     },
-    [processingQueue, removeFromQueue]
+    [processingQueue, removeFromQueue, addToQueue]
   );
 
   // Only show Add Recipe button and Filters on home page
