@@ -275,10 +275,9 @@ export async function updateRecipe(
  */
 
 export async function createVariant(
-  recipeId: string,
   data: CreateVariantInput
 ): Promise<RecipeVariantDocument> {
-  const col = getVariantsCollection(recipeId);
+  const col = getVariantsCollection(data.recipeId);
   const docRef = await col.add({
     recipeId: data.recipeId,
     name: data.name,
@@ -309,5 +308,37 @@ export async function deleteVariant(
   variantId: string
 ): Promise<void> {
   const col = getVariantsCollection(recipeId);
-  await col.doc(variantId).delete();
+  console.log(
+    `Attempting to delete variant ${variantId} from collection path:`,
+    col.path
+  );
+  const docRef = col.doc(variantId);
+  console.log(`Document reference path:`, docRef.path);
+  await docRef.delete();
+  console.log(`Document delete() called successfully`);
+
+  // Verify deletion
+  const checkDoc = await docRef.get();
+  console.log(
+    `Verification - Document exists after deletion:`,
+    checkDoc.exists
+  );
+}
+
+export async function getVariant(
+  recipeId: string,
+  variantId: string
+): Promise<RecipeVariantDocument | null> {
+  const col = getVariantsCollection(recipeId);
+  const snap = await col.doc(variantId).get();
+  if (!snap.exists) return null;
+  return deserializeVariant(snap);
+}
+
+export async function listVariants(
+  recipeId: string
+): Promise<RecipeVariantDocument[]> {
+  const col = getVariantsCollection(recipeId);
+  const snap = await col.orderBy("createdAt", "asc").get();
+  return snap.docs.map((doc) => deserializeVariant(doc));
 }

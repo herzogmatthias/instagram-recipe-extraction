@@ -159,17 +159,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Library</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    onProcessingOpenChange(true);
-                  }}
-                  data-testid="nav-processing-mobile"
-                  className="flex items-center gap-3"
-                >
-                  <Clock className="h-4 w-4" />
-                  <span>Processing</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link
                     href="/settings"

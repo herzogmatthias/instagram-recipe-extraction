@@ -134,7 +134,9 @@ export async function processRecipeImport(
       inputUrl: currentImport.inputUrl,
       importId,
       geminiFileUri,
-      recipe_data: extraction.recipe,
+      recipe_data: extraction.recipe
+        ? { ...extraction.recipe, isOriginal: true }
+        : undefined,
     });
 
     await transition("ready", {

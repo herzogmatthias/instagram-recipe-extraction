@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { ProcessingQueueProvider } from "@/lib/client/hooks/useProcessingQueue";
 import { NavbarWrapper } from "@/components/navbar/NavbarWrapper";
+import { Toaster } from "@/components/ui/sonner";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -34,6 +35,7 @@ export default function RootLayout({
           <ProcessingQueueProvider>
             <NavbarWrapper />
             <div className="pt-16">{children}</div>
+            <Toaster richColors position="top-right" />
           </ProcessingQueueProvider>
         </ThemeProvider>
       </body>

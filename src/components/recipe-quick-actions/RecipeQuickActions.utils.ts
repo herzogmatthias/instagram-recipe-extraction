@@ -1,7 +1,7 @@
 export type QuickAction = {
   id: string;
   label: string;
-  prompt: string;
+  prompt: string; // High-level requirement description only
 };
 
 export const QUICK_ACTIONS: QuickAction[] = [
@@ -9,24 +9,24 @@ export const QUICK_ACTIONS: QuickAction[] = [
     id: "spicier",
     label: "Make it spicier",
     prompt:
-      "Suggest spicy adjustments (chilies, oils, pastes) keeping balance.",
+      "Increase perceived heat using chilies/pastes without overpowering other flavors.",
   },
   {
     id: "vegan",
     label: "Convert to vegan",
     prompt:
-      "Replace animal products with vegan alternatives maintaining flavor and texture.",
+      "Replace all animal-derived ingredients with plant-based alternatives preserving flavor & texture.",
   },
   {
     id: "gluten_free",
     label: "Gluten-free variant",
     prompt:
-      "Adjust ingredients to remove gluten while preserving structure and taste.",
+      "Remove gluten sources; substitute with safe alternatives keeping structure & taste.",
   },
   {
     id: "budget",
     label: "Lower cost",
     prompt:
-      "Swap expensive ingredients for budget-friendly alternatives with minimal quality loss.",
+      "Reduce cost by substituting expensive items with cheaper equivalents minimizing quality loss.",
   },
 ];

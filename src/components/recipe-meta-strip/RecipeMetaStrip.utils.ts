@@ -8,10 +8,17 @@ import {
 type MetaBlock = { label: string; value: string | null | undefined };
 
 export function buildMetaBlocks(recipe: InstagramRecipePost): MetaBlock[] {
+  console.log("Recipe data in buildMetaBlocks:", recipe.recipe_data);
   return [
     { label: "Prep", value: formatTime(recipe.recipe_data?.prep_time_min) },
     { label: "Cook", value: formatTime(recipe.recipe_data?.cook_time_min) },
-    { label: "Total", value: formatTime(recipe.recipe_data?.total_time_min) },
+    {
+      label: "Total",
+      value: formatTime(
+        (recipe.recipe_data?.prep_time_min || 0) +
+          (recipe.recipe_data?.cook_time_min || 0)
+      ),
+    },
     { label: "Difficulty", value: titleCase(recipe.recipe_data?.difficulty) },
     { label: "Cuisine", value: recipe.recipe_data?.cuisine },
   ];

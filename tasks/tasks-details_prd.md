@@ -10,7 +10,7 @@
 - `src/components/recipe-detail` - Folder for header, media, ingredient list, steps, sticky controls, macros card, variant switcher, and auxiliary cards.
 - `src/components/chat/RecipeChatbot.tsx` / `RecipeChatbot.test.tsx` - Dockable chatbot UI that triggers Gemini calls and renders diffs.
 - `src/lib/state/recipeDetailStore.ts` / `recipeDetailStore.test.ts` - Client-side store for servings, unit system, checked ingredients, cook mode state, and active variant.
-- `src/lib/server/services/firestore.ts` / `gemini.ts` - Data + AI service layers expanded to read/write variants and message history.
+- `src/lib/server/services/firestore` / `gemini` - Data + AI service layers expanded to read/write variants and message history.
 - `data/recipes.json` & `data/instagram-posts.json` - Local fixtures acting as Firestore stand-ins during development and testing.
 
 ### Notes
@@ -36,19 +36,20 @@
   - [x] 2.3 Develop the steps panel with ingredient chips, hover/highlight syncing, chef’s note callouts, and inline timers where available.
   - [x] 2.4 Implement cook mode (separate route or modal) with large typography, step navigation, timers, and sticky bottom controls mirroring the main page actions.
 
-- [ ] 3.0 Create the sidebar insights (macros, variants, quick actions, quality, source).
+- [x] 3.0 Create the sidebar insights (macros, variants, quick actions, quality, source).
 
-  - [ ] 3.1 Add macros card showing per-serving stats plus recalculated totals when servings change; reuse state store selectors.
-  - [ ] 3.2 Build the variant switcher card with list, rename/delete (guard original), and persistence via Firestore collections (no fallback).
-  - [ ] 3.3 Implement quick actions that prefill chatbot prompts (spicier, vegan, gluten-free, budget) and surface CTA buttons.
-  - [ ] 3.4 Render source + quality cards with confidence badge, assumptions accordion, timestamps, music info, and external links.
+  - [x] 3.1 Add macros card showing per-serving stats plus recalculated totals when servings change; reuse state store selectors.
+  - [x] 3.2 Build the variant switcher card with list, rename/delete (guard original), and persistence via Firestore collections (no fallback).
+  - [x] 3.3 Implement quick actions that prefill chatbot prompts (spicier, vegan, gluten-free, budget) and surface CTA buttons.
+  - [x] 3.4 Render source + quality cards with confidence badge, assumptions accordion, timestamps, music info, and external links.
 
 - [ ] 4.0 Integrate chatbot workflow for Q&A and recipe variant generation with Firestore storage.
 
   - [ ] 4.1 Create the dockable chatbot UI with starter prompt chips, history threading (global + variant scoped), and context injection (caption + active variant).
-  - [ ] 4.2 Wire the chatbot to Google Gemini via `src/lib/server/services/gemini.ts`, handling multimodal payloads (video/image URLs + caption text).
-  - [ ] 4.3 Implement the `createVariant` function call handler that validates `RecipeData`, shows a diff preview (ingredients, steps, macros), and saves via Firestore.
-  - [ ] 4.4 Update variant state + Firestore documents when a new variant is accepted, ensuring the switcher and macros immediately reflect the active variant.
+  - [ ] 4.2 Wire the chatbot to Google Gemini via `src/lib/server/services/gemini/chatbot.ts` as a new file, handling text inputs.
+  - [ ] 4.3 Implement the `createVariant` function which the chatbot calls to save new variants to Firestore and update the UI.
+  - [ ] 4.4 Implement the `createVariant` handler which validates the incoming data, shows a diff preview, and saves the variant.
+  - [ ] 4.5 Update variant state + Firestore documents when a new variant is accepted, ensuring the switcher and macros immediately reflect the active variant.
 
 - [ ] 5.0 Add supporting infrastructure, accessibility, and test coverage.
   - [ ] 5.1 Extend Firestore service to support variants, message history, and hybrid thread retrieval APIs.

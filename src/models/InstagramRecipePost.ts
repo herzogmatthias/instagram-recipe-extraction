@@ -2,6 +2,7 @@
 
 export interface RecipeData {
   title: string;
+  isOriginal?: boolean;
   servings?: {
     value: number;
     note?: string;

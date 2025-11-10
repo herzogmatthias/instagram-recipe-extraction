@@ -106,58 +106,60 @@ export function IngredientPanel({ recipe }: IngredientPanelProps) {
     }
   };
 
-  const renderSection = (section: GroupedSection) => (
-    <AccordionItem key={section.title} value={section.title}>
-      <AccordionTrigger className="text-left text-base font-semibold text-foreground">
-        {section.title}
-      </AccordionTrigger>
-      <AccordionContent>
-        <div className="space-y-3">
-          {section.items.map((item) => {
-            const isChecked = checkedIngredientIds.has(item.id);
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex items-start gap-3 rounded-2xl border border-border/60 bg-card/80 px-3 py-2",
-                  isChecked && "opacity-70 line-through decoration-muted"
-                )}
-                onMouseEnter={() => highlightIngredients([item.id])}
-                onMouseLeave={() => highlightIngredients([])}
-              >
-                <Checkbox
-                  checked={isChecked}
-                  onCheckedChange={() => toggleIngredient(item.id)}
-                  aria-label={`Mark ${item.primaryText} as collected`}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {item.primaryText}
-                  </p>
-                  {item.secondaryText && (
-                    <p className="text-xs text-muted-foreground">
-                      {item.secondaryText}
+  const renderSection = (section: GroupedSection, key: string) => {
+    return (
+      <AccordionItem key={key} value={section.title}>
+        <AccordionTrigger className="text-left text-base font-semibold text-foreground">
+          {section.title}
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-3">
+            {section.items.map((item) => {
+              const isChecked = checkedIngredientIds.has(item.id);
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "flex items-start gap-3 rounded-2xl border border-border/60 bg-card/80 px-3 py-2",
+                    isChecked && "opacity-70 line-through decoration-muted"
+                  )}
+                  onMouseEnter={() => highlightIngredients([item.id])}
+                  onMouseLeave={() => highlightIngredients([])}
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={() => toggleIngredient(item.id)}
+                    aria-label={`Mark ${item.primaryText} as collected`}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {item.primaryText}
                     </p>
+                    {item.secondaryText && (
+                      <p className="text-xs text-muted-foreground">
+                        {item.secondaryText}
+                      </p>
+                    )}
+                  </div>
+                  {item.chefsNote && (
+                    <HoverCard>
+                      <HoverCardTrigger className="text-xs text-muted-foreground underline">
+                        note
+                      </HoverCardTrigger>
+                      <HoverCardContent className="max-w-xs text-sm">
+                        {item.chefsNote}
+                      </HoverCardContent>
+                    </HoverCard>
                   )}
                 </div>
-                {item.chefsNote && (
-                  <HoverCard>
-                    <HoverCardTrigger className="text-xs text-muted-foreground underline">
-                      note
-                    </HoverCardTrigger>
-                    <HoverCardContent className="max-w-xs text-sm">
-                      {item.chefsNote}
-                    </HoverCardContent>
-                  </HoverCard>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </AccordionContent>
-    </AccordionItem>
-  );
+              );
+            })}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    );
+  };
 
   if (sections.length === 0) {
     return null;
@@ -221,7 +223,7 @@ export function IngredientPanel({ recipe }: IngredientPanelProps) {
 
       <CardContent className="py-6">
         <Accordion type="multiple" defaultValue={sections.map((s) => s.title)}>
-          {sections.map(renderSection)}
+          {sections.map((section) => renderSection(section, section.title))}
         </Accordion>
       </CardContent>
     </Card>

@@ -4,13 +4,21 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { RecipeQuickActionsProps } from "./RecipeQuickActions.types";
-import { QUICK_ACTIONS } from "./RecipeQuickActions.utils";
+import { QUICK_PROMPTS } from "@/components/recipe-chatbot/RecipeChatbot.utils";
 
 export function RecipeQuickActions({ recipe }: RecipeQuickActionsProps) {
-  // Placeholder dispatcher; integrate with chatbot store later.
   const handleAction = (prompt: string) => {
-    // In future: dispatch to chatbot context
-    console.log("Quick action prompt:", prompt); // eslint-disable-line no-console
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("chatbot:prefill", {
+          detail: {
+            prompt,
+            source: "quick-action",
+            recipeId: (recipe as any)?.id,
+          },
+        })
+      );
+    }
   };
 
   return (
@@ -23,17 +31,17 @@ export function RecipeQuickActions({ recipe }: RecipeQuickActionsProps) {
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex flex-col gap-2">
-          {QUICK_ACTIONS.map((action) => (
+          {QUICK_PROMPTS.map((p) => (
             <Button
-              key={action.id}
+              key={p.id}
               type="button"
               variant="outline"
               size="sm"
               className="justify-start gap-2"
-              onClick={() => handleAction(action.prompt)}
-              aria-label={action.label}
+              onClick={() => handleAction(p.prompt)}
+              aria-label={p.label}
             >
-              {action.label}
+              {p.label}
             </Button>
           ))}
         </div>

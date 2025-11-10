@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Bookmark,
   Share2,
   ExternalLink,
   Pencil,
   Trash2,
+  Loader2,
   ChevronDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type {
   RecipeDetailHeaderProps,
   RecipeVariantMeta,
@@ -44,6 +46,87 @@ export function RecipeDetailHeader({
     null
   );
   const [newName, setNewName] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Load variants from API on mount
+  useEffect(() => {
+    const loadVariants = async () => {
+      try {
+        const response = await fetch(`/api/recipes/${recipe.id}/variants`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const variantList: RecipeVariantMeta[] = data.variants.map(
+          (v: { id: string; name: string }) => ({
+            id: v.id,
+            title: v.name,
+            isOriginal: false,
+          })
+        );
+
+        setVariants([
+          {
+            id: recipe.id,
+            title: recipe.recipe_data?.title || "Original",
+            isOriginal: true,
+          },
+          ...variantList,
+        ]);
+      } catch (error) {
+        console.error("Failed to load variants:", error);
+      }
+    };
+
+    loadVariants();
+  }, [recipe.id, recipe.recipe_data?.title]);
+
+  // Listen for new variants created by chatbot
+  useEffect(() => {
+    const handleVariantCreated = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        variantId: string;
+        variant: { id: string; name: string };
+      }>;
+
+      const { variantId, variant } = customEvent.detail;
+
+      setVariants((prev) => {
+        // Check if variant already exists
+        if (prev.some((v) => v.id === variantId)) {
+          return prev;
+        }
+
+        return [
+          ...prev,
+          {
+            id: variantId,
+            title: variant.name,
+            isOriginal: false,
+          },
+        ];
+      });
+    };
+
+    window.addEventListener("variantCreated", handleVariantCreated);
+    return () => {
+      window.removeEventListener("variantCreated", handleVariantCreated);
+    };
+  }, []);
+
+  // Notify when variant selection changes
+  useEffect(() => {
+    const activeVar = variants.find((v) => v.id === activeVariantId);
+    if (!activeVar) return;
+
+    window.dispatchEvent(
+      new CustomEvent("variantChanged", {
+        detail: {
+          variantId: activeVar.id,
+          isOriginal: activeVar.isOriginal,
+        },
+      })
+    );
+  }, [activeVariantId, variants]);
 
   const sorted = useMemo(() => sortVariants(variants), [variants]);
   const activeVariant =
@@ -57,23 +140,77 @@ export function RecipeDetailHeader({
     setRenameOpen(true);
   };
 
-  const applyRename = () => {
+  const applyRename = async () => {
     if (!renameTarget) return;
-    setVariants((prev) =>
-      prev.map((v) =>
-        v.id === renameTarget.id
-          ? { ...v, title: newName.trim() || v.title }
-          : v
-      )
-    );
-    setRenameOpen(false);
+    const trimmedName = newName.trim();
+    if (!trimmedName) return;
+
+    try {
+      const response = await fetch(
+        `/api/recipes/${recipe.id}/variants/${renameTarget.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmedName }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to rename variant");
+      }
+
+      setVariants((prev) =>
+        prev.map((v) =>
+          v.id === renameTarget.id ? { ...v, title: trimmedName } : v
+        )
+      );
+      setRenameOpen(false);
+    } catch (error) {
+      console.error("Failed to rename variant:", error);
+    }
   };
 
-  const handleDelete = (v: RecipeVariantMeta) => {
+  const handleDelete = async (v: RecipeVariantMeta) => {
     if (v.isOriginal) return;
-    setVariants((prev) => prev.filter((x) => x.id !== v.id));
-    if (activeVariantId === v.id) {
-      setActiveVariantId(sorted[0]?.id ?? recipe.id);
+
+    setDeletingId(v.id);
+    try {
+      const response = await fetch(
+        `/api/recipes/${recipe.id}/variants/${v.id}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete variant");
+      }
+
+      // Remove variant from list
+      setVariants((prev) => prev.filter((x) => x.id !== v.id));
+
+      // If we're deleting the currently active variant, switch to original
+      if (activeVariantId === v.id) {
+        const originalVariant = sorted.find((x) => x.isOriginal);
+        if (originalVariant) {
+          setActiveVariantId(originalVariant.id);
+
+          // Dispatch event to notify chatbot to switch to original thread
+          window.dispatchEvent(
+            new CustomEvent("variantChanged", {
+              detail: {
+                variantId: originalVariant.id,
+                isOriginal: true,
+              },
+            })
+          );
+        }
+      }
+
+      toast.success("Variant deleted");
+    } catch (error) {
+      console.error("Failed to delete variant:", error);
+      toast.error("Failed to delete variant");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -160,8 +297,13 @@ export function RecipeDetailHeader({
                             e.stopPropagation();
                             handleDelete(v);
                           }}
+                          disabled={deletingId === v.id}
                         >
-                          <Trash2 className="size-3" />
+                          {deletingId === v.id ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3" />
+                          )}
                         </Button>
                       </div>
                     )}
