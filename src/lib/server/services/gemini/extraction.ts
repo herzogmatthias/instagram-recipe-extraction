@@ -4,9 +4,8 @@ import {
   parseRecipeDataResult,
 } from "@/lib/shared/utils/recipeValidator";
 import { SYSTEM_PROMPT } from "@/lib/shared/constants/llm";
-import { initializeGemini } from "./client";
+import { initializeGemini, getDefaultModel } from "./client";
 import {
-  DEFAULT_RECIPE_MODEL,
   DEFAULT_EXTRACTION_TEMPERATURE,
   MAX_EXTRACTION_ATTEMPTS,
 } from "./client";
@@ -18,13 +17,14 @@ export async function extractRecipe(
 ): Promise<{ recipe: RecipeData }> {
   const client = initializeGemini();
   const recipeResponseSchema = getRecipeResponseSchema();
+  const model = await getDefaultModel();
 
   let lastErr: unknown;
 
   for (let attempt = 1; attempt <= MAX_EXTRACTION_ATTEMPTS; attempt++) {
     try {
       const resp = await client.models.generateContent({
-        model: DEFAULT_RECIPE_MODEL,
+        model,
         contents: [
           {
             role: "user",

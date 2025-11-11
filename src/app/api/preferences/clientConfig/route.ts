@@ -8,8 +8,20 @@ import { setClientConfig } from "@/lib/server/services/firestore/userpreferences
 import type { FirebaseClientConfig } from "@/models/UserPreferences";
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body = await request.json();
+
+    // Audit log: Start
+    console.log(
+      JSON.stringify({
+        action: "CLIENT_CONFIG_SAVE_START",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        projectId: body.projectId,
+      })
+    );
 
     // Validate required fields
     const requiredFields = [
@@ -42,6 +54,19 @@ export async function POST(request: NextRequest) {
 
     await setClientConfig(config);
 
+    const duration = Date.now() - startTime;
+
+    // Audit log: Success
+    console.log(
+      JSON.stringify({
+        action: "CLIENT_CONFIG_SAVE_SUCCESS",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        projectId: body.projectId,
+        durationMs: duration,
+      })
+    );
+
     return NextResponse.json(
       {
         success: true,
@@ -50,7 +75,17 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error saving client config:", error);
+    // Audit log: Failure
+    console.error(
+      JSON.stringify({
+        action: "CLIENT_CONFIG_SAVE_FAILURE",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        error: error instanceof Error ? error.message : "Unknown error",
+        durationMs: Date.now() - startTime,
+      })
+    );
+
     return NextResponse.json(
       { error: "Failed to save client configuration" },
       { status: 500 }

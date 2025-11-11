@@ -22,8 +22,20 @@ type TransitEncryptedItem = {
 };
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body: Record<string, TransitEncryptedItem> = await request.json();
+
+    // Audit log: Start
+    console.log(
+      JSON.stringify({
+        action: "SECRETS_SAVE_START",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        secretCount: Object.keys(body).length,
+      })
+    );
 
     // Validate at least one secret is provided
     const secretKeys = Object.keys(body);
@@ -78,6 +90,19 @@ export async function POST(request: NextRequest) {
     // Save to Firestore
     await setSecrets(encryptedSecrets);
 
+    const duration = Date.now() - startTime;
+
+    // Audit log: Success
+    console.log(
+      JSON.stringify({
+        action: "SECRETS_SAVE_SUCCESS",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        secretCount: Object.keys(encryptedItems).length,
+        durationMs: duration,
+      })
+    );
+
     return NextResponse.json(
       {
         success: true,
@@ -88,7 +113,17 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error saving secrets:", error);
+    // Audit log: Failure
+    console.error(
+      JSON.stringify({
+        action: "SECRETS_SAVE_FAILURE",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        error: error instanceof Error ? error.message : "Unknown error",
+        durationMs: Date.now() - startTime,
+      })
+    );
+
     return NextResponse.json(
       {
         error:

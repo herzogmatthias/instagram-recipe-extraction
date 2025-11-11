@@ -3,7 +3,7 @@
  * Handles function calling for createVariant operations.
  */
 
-import { getGeminiClient } from "./client";
+import { getGeminiClient, getDefaultModel } from "./client";
 import { Type, FunctionDeclaration } from "@google/genai";
 import type { RecipeData } from "@/models/InstagramRecipePost";
 import type { ChatMessage } from "@/components/recipe-chatbot/RecipeChatbot.types";
@@ -170,6 +170,7 @@ export async function chatWithRecipe(
   request: ChatRequest
 ): Promise<ChatResponse> {
   const client = getGeminiClient();
+  const model = await getDefaultModel();
 
   // Build dynamic system instruction with recipe context
   const systemInstruction = request.recipeData
@@ -215,7 +216,7 @@ Always reference this specific recipe when answering questions.`
   ];
 
   const result = await client.models.generateContent({
-    model: "gemini-2.5-flash",
+    model,
     contents,
     config: {
       systemInstruction,
@@ -237,6 +238,7 @@ export async function* streamChatWithRecipe(
   request: ChatRequest
 ): AsyncGenerator<StreamChunk> {
   const client = getGeminiClient();
+  const model = await getDefaultModel();
 
   // Build dynamic system instruction with recipe context
   const systemInstruction = request.recipeData
@@ -291,7 +293,7 @@ Always reference this specific recipe when answering questions.`
   });
 
   const result = await client.models.generateContentStream({
-    model: "gemini-2.5-flash",
+    model,
     contents,
     config: {
       systemInstruction,

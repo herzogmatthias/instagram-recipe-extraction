@@ -16,6 +16,7 @@ import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddLinkModalProps } from "./AddLinkModal.types";
 import { getHelperText, getValidationError } from "./AddLinkModal.utils";
+import { useSetupStatus } from "@/lib/client/hooks/useSetupStatus";
 
 export function AddLinkModal({
   open,
@@ -27,8 +28,10 @@ export function AddLinkModal({
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingInternal, setIsSubmittingInternal] = useState(false);
+  const { flags } = useSetupStatus();
 
   const isSubmitting = isSubmittingProp || isSubmittingInternal;
+  const isDisabled = !flags.extractionReady || isSubmitting;
 
   const resetState = useCallback(() => {
     setUrl("");
@@ -145,13 +148,27 @@ export function AddLinkModal({
             <Button
               type="submit"
               className="w-full"
-              disabled={isSubmitting}
+              disabled={isDisabled}
               data-testid="submit-instagram-url"
+              title={
+                !flags.extractionReady
+                  ? "Complete setup in Settings to enable recipe extraction"
+                  : undefined
+              }
             >
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isSubmitting ? "Adding..." : "Add recipe"}
+              {isSubmitting
+                ? "Adding..."
+                : !flags.extractionReady
+                ? "Setup Required"
+                : "Add recipe"}
+              {!flags.extractionReady && (
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Complete setup in Settings to enable recipe extraction
+                </p>
+              )}
             </Button>
           </DialogFooter>
         </form>

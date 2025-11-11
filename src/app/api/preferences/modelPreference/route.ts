@@ -8,8 +8,20 @@ import { setModelPreference } from "@/lib/server/services/firestore/userpreferen
 import type { ModelPreference } from "@/models/UserPreferences";
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body = await request.json();
+
+    // Audit log: Start
+    console.log(
+      JSON.stringify({
+        action: "MODEL_PREFERENCE_SAVE_START",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        model: body.geminiDefaultModel,
+      })
+    );
 
     if (!body.geminiDefaultModel) {
       return NextResponse.json(
@@ -33,6 +45,19 @@ export async function POST(request: NextRequest) {
 
     await setModelPreference(preference);
 
+    const duration = Date.now() - startTime;
+
+    // Audit log: Success
+    console.log(
+      JSON.stringify({
+        action: "MODEL_PREFERENCE_SAVE_SUCCESS",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        model: body.geminiDefaultModel,
+        durationMs: duration,
+      })
+    );
+
     return NextResponse.json(
       {
         success: true,
@@ -41,7 +66,17 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error saving model preference:", error);
+    // Audit log: Failure
+    console.error(
+      JSON.stringify({
+        action: "MODEL_PREFERENCE_SAVE_FAILURE",
+        timestamp: new Date().toISOString(),
+        actor: "user",
+        error: error instanceof Error ? error.message : "Unknown error",
+        durationMs: Date.now() - startTime,
+      })
+    );
+
     return NextResponse.json(
       { error: "Failed to save model preference" },
       { status: 500 }
