@@ -11,7 +11,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
-import { useRecipeDetail } from "@/lib/state/recipeDetailStore";
+import { useRecipeDetail } from "@/lib/client/state/recipeDetailStore";
 import type { StepsPanelProps } from "./StepsPanel.types";
 import { buildDisplayIngredient } from "./StepsPanel.utils";
 

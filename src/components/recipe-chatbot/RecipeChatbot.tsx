@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Send, Sparkles, Loader2 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Drawer,
   DrawerContent,
@@ -20,12 +17,11 @@ import type {
   ChatMessage,
   VariantPreview,
 } from "./RecipeChatbot.types";
-import {
-  QUICK_PROMPTS,
-  createUserMessage,
-  formatTimestamp,
-} from "./RecipeChatbot.utils";
+import { createUserMessage } from "./RecipeChatbot.utils";
 import { useRecipeVariant } from "@/components/recipe-variant-provider/RecipeVariantProvider";
+import { ChatMessageList } from "./ChatMessageList";
+import { ChatInput } from "./ChatInput";
+import { fetchDedupe } from "@/lib/shared/utils/fetchDedupe";
 
 const snapPoints = ["350px", 0.5, 0.75, 1];
 
@@ -47,7 +43,7 @@ export function RecipeChatbot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [snap, setSnap] = useState<number | string | null>(snapPoints[0]);
   const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Load thread and messages on mount or when variant changes
   useEffect(() => {
@@ -68,7 +64,7 @@ export function RecipeChatbot({
           activeVariantId,
         });
 
-        const response = await fetch(`/api/threads?${params}`);
+        const response = await fetchDedupe(`/api/threads?${params}`);
         if (!response.ok) {
           throw new Error("Failed to load thread");
         }
@@ -497,279 +493,24 @@ export function RecipeChatbot({
           </div>
         </DrawerHeader>
 
-        {/* Messages */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-6">
-          {messages.length === 0 && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Hi! I can help you modify this recipe. Try asking me to:
-              </p>
-              <div className="grid gap-2">
-                {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
-                  <Button
-                    key={prompt.id}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuickPrompt(prompt.prompt)}
-                    className="justify-start text-left text-xs"
-                    disabled={isLoading}
-                  >
-                    {prompt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+        <ChatMessageList
+          messages={messages}
+          isLoading={isLoading}
+          variantPreview={variantPreview}
+          originalRecipeData={originalRecipeData}
+          onQuickPrompt={handleQuickPrompt}
+          onAcceptVariant={handleAcceptVariant}
+          onRejectVariant={handleRejectVariant}
+        />
 
-          {messages
-            .filter((msg) => {
-              // Don't display assistant messages with function calls or empty content
-              if (
-                msg.role === "assistant" &&
-                (msg.functionCall || !msg.content.trim())
-              ) {
-                return false;
-              }
-              return true;
-            })
-            .map((message) => (
-              <div
-                data-vaul-no-drag
-                key={message.id}
-                className={cn(
-                  "flex gap-2",
-                  message.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  )}
-                >
-                  {message.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          // Customize markdown styling
-                          p: ({ children }) => (
-                            <p className="mb-2 last:mb-0">{children}</p>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="my-2 ml-4 list-disc">{children}</ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="my-2 ml-4 list-decimal">
-                              {children}
-                            </ol>
-                          ),
-                          li: ({ children }) => (
-                            <li className="mb-1">{children}</li>
-                          ),
-                          code: ({ children, className }) => {
-                            const isInline = !className;
-                            return isInline ? (
-                              <code className="rounded bg-muted-foreground/10 px-1 py-0.5 text-xs font-mono">
-                                {children}
-                              </code>
-                            ) : (
-                              <code className="block rounded bg-muted-foreground/10 p-2 text-xs font-mono overflow-x-auto">
-                                {children}
-                              </code>
-                            );
-                          },
-                          strong: ({ children }) => (
-                            <strong className="font-semibold">
-                              {children}
-                            </strong>
-                          ),
-                          em: ({ children }) => (
-                            <em className="italic">{children}</em>
-                          ),
-                          h1: ({ children }) => (
-                            <h1 className="text-lg font-bold mb-2">
-                              {children}
-                            </h1>
-                          ),
-                          h2: ({ children }) => (
-                            <h2 className="text-base font-bold mb-2">
-                              {children}
-                            </h2>
-                          ),
-                          h3: ({ children }) => (
-                            <h3 className="text-sm font-semibold mb-1">
-                              {children}
-                            </h3>
-                          ),
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                  )}
-                  <p className="mt-1 text-xs opacity-70">
-                    {formatTimestamp(message.timestamp)}
-                  </p>
-                </div>
-              </div>
-            ))}
-
-          {/* Variant Preview */}
-          {variantPreview && (
-            <div className="rounded-xl border-2 border-primary bg-primary/5 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-5 text-primary" />
-                <h4 className="text-sm font-semibold">
-                  New Variant Preview: {variantPreview.name}
-                </h4>
-              </div>
-
-              {/* Changes Summary */}
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Key Changes:
-                </p>
-                <div className="space-y-1">
-                  {variantPreview.changes.map((change, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs">
-                      <span className="text-green-600 mt-0.5">•</span>
-                      <span>{change}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recipe Details Comparison */}
-              {originalRecipeData && (
-                <div className="space-y-2 text-xs border-t pt-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    {variantPreview.recipe_data.servings?.value !==
-                      originalRecipeData.servings?.value && (
-                      <div>
-                        <span className="text-muted-foreground">
-                          Servings:{" "}
-                        </span>
-                        <span className="line-through text-red-600">
-                          {originalRecipeData.servings?.value}
-                        </span>
-                        <span className="ml-1 text-green-600 font-medium">
-                          {variantPreview.recipe_data.servings?.value}
-                        </span>
-                      </div>
-                    )}
-                    {variantPreview.recipe_data.prep_time_min !==
-                      originalRecipeData.prep_time_min && (
-                      <div>
-                        <span className="text-muted-foreground">Prep: </span>
-                        <span className="line-through text-red-600">
-                          {originalRecipeData.prep_time_min}m
-                        </span>
-                        <span className="ml-1 text-green-600 font-medium">
-                          {variantPreview.recipe_data.prep_time_min}m
-                        </span>
-                      </div>
-                    )}
-                    {variantPreview.recipe_data.cook_time_min !==
-                      originalRecipeData.cook_time_min && (
-                      <div>
-                        <span className="text-muted-foreground">Cook: </span>
-                        <span className="line-through text-red-600">
-                          {originalRecipeData.cook_time_min}m
-                        </span>
-                        <span className="ml-1 text-green-600 font-medium">
-                          {variantPreview.recipe_data.cook_time_min}m
-                        </span>
-                      </div>
-                    )}
-                    {variantPreview.recipe_data.difficulty !==
-                      originalRecipeData.difficulty && (
-                      <div>
-                        <span className="text-muted-foreground">
-                          Difficulty:{" "}
-                        </span>
-                        <span className="line-through text-red-600">
-                          {originalRecipeData.difficulty}
-                        </span>
-                        <span className="ml-1 text-green-600 font-medium">
-                          {variantPreview.recipe_data.difficulty}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {variantPreview.recipe_data.ingredients.length} ingredients,{" "}
-                    {variantPreview.recipe_data.steps.length} steps
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  onClick={handleAcceptVariant}
-                  disabled={isLoading}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  ✓ Accept Variant
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleRejectVariant}
-                  disabled={isLoading}
-                  className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                >
-                  ✗ Reject
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2">
-                <Loader2 className="size-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
         <div className="mt-auto border-t border-border p-6">
-          <form
-            data-vaul-no-drag
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendMessage(input);
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything about this recipe..."
-              disabled={isLoading}
-              className="flex-1"
-              ref={inputRef}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!input.trim() || isLoading}
-              aria-label="Send message"
-            >
-              <Send className="size-4" />
-            </Button>
-          </form>
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSubmit={handleSendMessage}
+            isLoading={isLoading}
+            inputRef={inputRef}
+          />
         </div>
       </DrawerContent>
     </Drawer>

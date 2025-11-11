@@ -3,7 +3,7 @@ import { CookModeDialog } from "./CookModeDialog";
 import {
   RecipeDetailProvider,
   useRecipeDetail,
-} from "@/lib/state/recipeDetailStore";
+} from "@/lib/client/state/recipeDetailStore";
 import {
   createMockInstagramRecipePost,
   createMockRecipeData,

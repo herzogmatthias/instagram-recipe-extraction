@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { fetchDedupe } from "@/lib/shared/utils/fetchDedupe";
 import { toast } from "sonner";
 import type {
   RecipeDetailHeaderProps,
@@ -52,7 +53,9 @@ export function RecipeDetailHeader({
   useEffect(() => {
     const loadVariants = async () => {
       try {
-        const response = await fetch(`/api/recipes/${recipe.id}/variants`);
+        const response = await fetchDedupe(
+          `/api/recipes/${recipe.id}/variants`
+        );
         if (!response.ok) return;
 
         const data = await response.json();

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { IngredientPanel } from "./IngredientPanel";
-import { RecipeDetailProvider } from "@/lib/state/recipeDetailStore";
+import { RecipeDetailProvider } from "@/lib/client/state/recipeDetailStore";
 import {
   createMockInstagramRecipePost,
   createMockRecipeData,

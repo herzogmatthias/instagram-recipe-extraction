@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useRecipeDetail } from "@/lib/state/recipeDetailStore";
+import { useRecipeDetail } from "@/lib/client/state/recipeDetailStore";
 import type { RecipeMacrosCardProps } from "./RecipeMacrosCard.types";
 import { scaleMacros, formatMacrosLine } from "./RecipeMacrosCard.utils";
 

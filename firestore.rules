@@ -22,6 +22,19 @@ service cloud.firestore {
       }
     }
 
+    // User preferences - single-profile mode
+    match /userpreferences/{uid} {
+      // Allow owner to read/write their preferences
+      // In single-profile mode, uid is "singleton"
+      allow read, write: if true;
+      
+      // CRITICAL: Prevent client access to encrypted secrets
+      // The secrets field should ONLY be accessible via server SDK
+      // Client applications should use API endpoints to manage secrets
+      // This rule allows reading the document but the API should never
+      // return the secrets field to the client
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

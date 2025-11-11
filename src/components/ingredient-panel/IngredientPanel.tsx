@@ -22,7 +22,7 @@ import {
   useRecipeDetail,
   UNIT_SYSTEMS,
   type UnitSystem,
-} from "@/lib/state/recipeDetailStore";
+} from "@/lib/client/state/recipeDetailStore";
 import { copyTextToClipboard } from "@/lib/shared/utils/clipboard";
 import { toast } from "sonner";
 import type {

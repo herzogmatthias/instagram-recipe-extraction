@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useRecipeDetail } from "@/lib/state/recipeDetailStore";
+import { useRecipeDetail } from "@/lib/client/state/recipeDetailStore";
 import type { CookModeDialogProps } from "./CookModeDialog.types";
 import { buildDisplayIngredient } from "@/lib/shared/utils/ingredientUtils";
 

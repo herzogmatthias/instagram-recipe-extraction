@@ -5,7 +5,7 @@ import { cache } from "react";
 import { WatchReelFab } from "@/components/watch-reel-fab/WatchReelFab";
 import { fetchRecipeDetail } from "@/lib/server/services/firestore";
 //
-import { RecipeDetailProvider } from "@/lib/state/recipeDetailStore";
+import { RecipeDetailProvider } from "@/lib/client/state/recipeDetailStore";
 import { RecipeVariantProvider } from "@/components/recipe-variant-provider/RecipeVariantProvider";
 import { RecipeDetailContent } from "@/components/recipe-detail-content/RecipeDetailContent";
 

@@ -1,5 +1,5 @@
 import type { Ingredient } from "@/models/InstagramRecipePost";
-import type { UnitSystem } from "@/lib/state/recipeDetailStore";
+import type { UnitSystem } from "@/lib/client/state/recipeDetailStore";
 
 type ConversionRule = {
   metricUnit: string;
