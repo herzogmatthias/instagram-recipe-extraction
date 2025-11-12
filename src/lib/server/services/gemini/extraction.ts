@@ -3,7 +3,7 @@ import {
   getRecipeResponseSchema,
   parseRecipeDataResult,
 } from "@/lib/shared/utils/recipeValidator";
-import { SYSTEM_PROMPT } from "@/lib/shared/constants/llm";
+import { SYSTEM_PROMPT } from "@/lib/server/constants/llm";
 import { initializeGemini, getDefaultModel } from "./client";
 import {
   DEFAULT_EXTRACTION_TEMPERATURE,
@@ -15,7 +15,7 @@ import { buildUserPrompt } from "./utils";
 export async function extractRecipe(
   params: ExtractRecipeParams
 ): Promise<{ recipe: RecipeData }> {
-  const client = initializeGemini();
+  const client = await initializeGemini();
   const recipeResponseSchema = getRecipeResponseSchema();
   const model = await getDefaultModel();
 

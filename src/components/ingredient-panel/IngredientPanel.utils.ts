@@ -1,2 +1,2 @@
-export { buildDisplayIngredient } from "@/lib/shared/utils/ingredientUtils";
-export type { DisplayIngredient } from "@/lib/shared/utils/ingredientUtils";
+export { buildDisplayIngredient } from "@/lib/client/utils/ingredientUtils";
+export type { DisplayIngredient } from "@/lib/client/utils/ingredientUtils";

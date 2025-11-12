@@ -10,7 +10,7 @@ import type { UserPreferencesDocument } from "@/models/UserPreferences";
 import {
   deriveReadinessFlags,
   type ReadinessFlags,
-} from "@/lib/shared/utils/readinessFlags";
+} from "@/lib/client/utils/readinessFlags";
 
 export type SetupStatus = {
   /**

@@ -15,7 +15,7 @@ import {
   type Unsubscribe,
   type Firestore,
 } from "firebase/firestore";
-import { getClientFirestore } from "@/lib/client/firebase";
+import { getClientFirestore } from "@/lib/client/services/firebase";
 import type { RecipeStatus } from "@/models/InstagramRecipePost";
 import type { RecipeImportDocument } from "@/models/RecipeImport";
 
@@ -51,11 +51,11 @@ export function ProcessingQueueProvider({ children }: { children: ReactNode }) {
   const listenerMap = useRef<Map<string, Unsubscribe>>(new Map());
   const firestoreRef = useRef<Firestore | undefined>(undefined);
 
-  const ensureFirestore = useCallback(() => {
+  const ensureFirestore = useCallback(async () => {
     if (firestoreRef.current) {
       return firestoreRef.current;
     }
-    firestoreRef.current = getClientFirestore();
+    firestoreRef.current = await getClientFirestore();
     return firestoreRef.current;
   }, []);
 
@@ -68,13 +68,13 @@ export function ProcessingQueueProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const attachListener = useCallback(
-    (importId: string) => {
+    async (importId: string) => {
       if (listenerMap.current.has(importId)) {
         return;
       }
 
       try {
-        const db = ensureFirestore();
+        const db = await ensureFirestore();
         const importRef = doc(db, "imports", importId);
         const unsubscribe = onSnapshot(
           importRef,
@@ -178,18 +178,22 @@ export function ProcessingQueueProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    const currentMap = listenerMap.current;
     return () => {
-      listenerMap.current.forEach((unsubscribe) => unsubscribe());
-      listenerMap.current.clear();
+      currentMap.forEach((unsubscribe) => unsubscribe());
+      currentMap.clear();
     };
   }, []);
 
-  const value: UseProcessingQueueReturn = {
-    queue,
-    addToQueue,
-    removeFromQueue,
-    isInQueue,
-  };
+  const value = React.useMemo<UseProcessingQueueReturn>(
+    () => ({
+      queue,
+      addToQueue,
+      removeFromQueue,
+      isInQueue,
+    }),
+    [queue, addToQueue, removeFromQueue, isInQueue]
+  );
 
   return React.createElement(
     ProcessingQueueContext.Provider,

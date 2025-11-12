@@ -4,11 +4,15 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { setSecrets } from "@/lib/server/services/firestore/userpreferences";
+import {
+  getUserPreferences,
+  setSecrets,
+} from "@/lib/server/services/firestore/userpreferences";
 import {
   generateDEK,
   wrapDEK,
   encryptSecret,
+  unwrapDEK,
   getMasterKey,
   getLast4Chars,
 } from "@/lib/server/services/encryption/crypto";
@@ -52,14 +56,28 @@ export async function POST(request: NextRequest) {
       plaintextSecrets[key] = decryptTransitSecret(encryptedValue);
     }
 
+    // Get existing secrets to merge with
+    const preferences = await getUserPreferences();
+    const existingSecrets = preferences?.secrets;
+
     // Get master key
     const masterKey = getMasterKey();
 
-    // Generate new DEK for this user
-    const dek = generateDEK();
-    const wrappedDEK = wrapDEK(dek, masterKey);
+    // Use existing DEK or generate new one
+    let dek: Buffer;
+    let wrappedDEK: string;
 
-    // Encrypt each secret with master key
+    if (existingSecrets?.dek_wrapped) {
+      // Decrypt existing secrets to preserve them
+      dek = unwrapDEK(existingSecrets.dek_wrapped, masterKey);
+      wrappedDEK = existingSecrets.dek_wrapped;
+    } else {
+      // Generate new DEK for first-time setup
+      dek = generateDEK();
+      wrappedDEK = wrapDEK(dek, masterKey);
+    }
+
+    // Start with existing items or empty object
     const encryptedItems: Record<
       string,
       {
@@ -69,7 +87,9 @@ export async function POST(request: NextRequest) {
         last4?: string;
         lastValidatedAt?: string;
       }
-    > = {};
+    > = existingSecrets?.items ? { ...existingSecrets.items } : {};
+
+    // Encrypt and merge new secrets
     for (const [key, value] of Object.entries(plaintextSecrets)) {
       if (value && value.trim().length > 0) {
         const encrypted = encryptSecret(value, dek);

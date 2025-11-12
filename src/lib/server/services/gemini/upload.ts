@@ -9,7 +9,7 @@ export async function uploadToGemini(
   mimeType: string,
   options?: UploadToGeminiOptions
 ): Promise<GeminiFile> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
 
   let uploaded: GeminiFile;
   try {
@@ -44,7 +44,7 @@ export async function waitForGeminiFile(
   fileName: string,
   options?: UploadToGeminiOptions
 ): Promise<GeminiFile> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const pollInterval = options?.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const startTime = Date.now();

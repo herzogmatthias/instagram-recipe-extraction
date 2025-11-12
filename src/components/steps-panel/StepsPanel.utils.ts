@@ -1,1 +1,1 @@
-export { buildDisplayIngredient } from "@/lib/shared/utils/ingredientUtils";
+export { buildDisplayIngredient } from "@/lib/client/utils/ingredientUtils";

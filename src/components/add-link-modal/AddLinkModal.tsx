@@ -145,31 +145,28 @@ export function AddLinkModal({
           </div>
 
           <DialogFooter className="border-t px-6 py-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isDisabled}
-              data-testid="submit-instagram-url"
-              title={
-                !flags.extractionReady
-                  ? "Complete setup in Settings to enable recipe extraction"
-                  : undefined
-              }
-            >
-              {isSubmitting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {isSubmitting
-                ? "Adding..."
-                : !flags.extractionReady
-                ? "Setup Required"
-                : "Add recipe"}
+            <div className="w-full space-y-2">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isDisabled}
+                data-testid="submit-instagram-url"
+              >
+                {isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isSubmitting
+                  ? "Adding..."
+                  : !flags.extractionReady
+                  ? "Setup Required"
+                  : "Add recipe"}
+              </Button>
               {!flags.extractionReady && (
-                <p className="text-xs text-center text-muted-foreground mt-2">
+                <p className="text-xs text-center text-muted-foreground">
                   Complete setup in Settings to enable recipe extraction
                 </p>
               )}
-            </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

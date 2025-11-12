@@ -73,49 +73,41 @@ export function deriveReadinessFlags(
     preferences.clientConfig.messagingSenderId &&
     preferences.clientConfig.appId;
 
-  if (!hasClientConfig) {
-    flags.missing.clientConfig = true;
-    flags.missing.firebaseAdmin = true;
-    flags.missing.apifyKey = true;
-    flags.missing.geminiKey = true;
-    flags.missing.modelPreference = true;
-    return flags; // Can't proceed without client config
-  }
-
-  flags.uiReady = true;
-
   // Check Firestore Admin SDK (required for writeReady)
   const hasFirebaseAdmin =
     preferences?.secrets?.items?.FIREBASE_SA_JSON !== undefined;
 
-  if (!hasFirebaseAdmin) {
-    flags.missing.firebaseAdmin = true;
-    flags.missing.apifyKey = true;
-    flags.missing.geminiKey = true;
-    flags.missing.modelPreference = true;
-    return flags; // Can't proceed without admin SDK
-  }
-
-  flags.writeReady = true;
-
   // Check Apify API Key (required for extractionReady)
   const hasApifyKey = preferences?.secrets?.items?.APIFY_API_KEY !== undefined;
-
-  if (!hasApifyKey) {
-    flags.missing.apifyKey = true;
-  }
 
   // Check Gemini API Key (required for extractionReady)
   const hasGeminiKey =
     preferences?.secrets?.items?.GEMINI_API_KEY !== undefined;
 
-  if (!hasGeminiKey) {
-    flags.missing.geminiKey = true;
-  }
-
   // Check Model Preference (required for extractionReady)
   const hasModelPreference =
     preferences?.modelPreference?.geminiDefaultModel !== undefined;
+
+  // Populate missing flags
+  if (!hasClientConfig) {
+    flags.missing.clientConfig = true;
+  } else {
+    flags.uiReady = true;
+  }
+
+  if (!hasFirebaseAdmin) {
+    flags.missing.firebaseAdmin = true;
+  } else if (flags.uiReady) {
+    flags.writeReady = true;
+  }
+
+  if (!hasApifyKey) {
+    flags.missing.apifyKey = true;
+  }
+
+  if (!hasGeminiKey) {
+    flags.missing.geminiKey = true;
+  }
 
   if (!hasModelPreference) {
     flags.missing.modelPreference = true;
@@ -124,8 +116,13 @@ export function deriveReadinessFlags(
   // extractionReady requires all of: Apify, Gemini, Model
   flags.extractionReady = hasApifyKey && hasGeminiKey && hasModelPreference;
 
-  // isComplete means extractionReady (all features unlocked)
-  flags.isComplete = flags.extractionReady;
+  // isComplete means ALL items configured (not just extractionReady)
+  flags.isComplete =
+    Boolean(hasClientConfig) &&
+    Boolean(hasFirebaseAdmin) &&
+    Boolean(hasApifyKey) &&
+    Boolean(hasGeminiKey) &&
+    Boolean(hasModelPreference);
 
   return flags;
 }

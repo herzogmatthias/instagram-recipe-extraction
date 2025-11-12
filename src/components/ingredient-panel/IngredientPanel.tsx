@@ -23,7 +23,7 @@ import {
   UNIT_SYSTEMS,
   type UnitSystem,
 } from "@/lib/client/state/recipeDetailStore";
-import { copyTextToClipboard } from "@/lib/shared/utils/clipboard";
+import { copyTextToClipboard } from "@/lib/client/utils/clipboard";
 import { toast } from "sonner";
 import type {
   IngredientPanelProps,

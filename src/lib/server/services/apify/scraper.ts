@@ -25,7 +25,7 @@ export async function scrapeInstagramPost(
   const input = buildActorInput(normalizedUrl);
 
   const rawPost = await withRetry(async () => {
-    const client = getApifyClient();
+    const client = await getApifyClient();
 
     let run;
     try {

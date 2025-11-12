@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { getClientFirestore } from "@/lib/client/firebase";
+import { getClientFirestore } from "@/lib/client/services/firebase";
 import type { InstagramRecipePost } from "@/models/InstagramRecipePost";
 
 interface UseRecipeDataReturn {
@@ -18,36 +18,47 @@ export function useRecipeData(): UseRecipeDataReturn {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    try {
-      const db = getClientFirestore();
-      const recipesRef = collection(db, "recipes");
-      const recipesQuery = query(recipesRef, orderBy("createdAt", "desc"));
+    let unsubscribe: (() => void) | undefined;
 
-      const unsubscribe = onSnapshot(
-        recipesQuery,
-        (snapshot) => {
-          const mapped = snapshot.docs.map((doc) => {
-            const data = doc.data() as Record<string, unknown>;
-            return normalizeRecipeDoc({ id: doc.id, ...data });
-          }) as InstagramRecipePost[];
-          setRecipes(mapped);
-          setLoading(false);
-          setError(null);
-        },
-        (err) => {
-          setError(new Error(err.message));
-          setLoading(false);
-        }
-      );
+    async function setupListener() {
+      try {
+        const db = await getClientFirestore();
+        const recipesRef = collection(db, "recipes");
+        const recipesQuery = query(recipesRef, orderBy("createdAt", "desc"));
 
-      return () => unsubscribe();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("Unable to connect to Firestore")
-      );
-      setLoading(false);
-      return () => {};
+        unsubscribe = onSnapshot(
+          recipesQuery,
+          (snapshot) => {
+            const mapped = snapshot.docs.map((doc) => {
+              const data = doc.data() as Record<string, unknown>;
+              return normalizeRecipeDoc({ id: doc.id, ...data });
+            }) as InstagramRecipePost[];
+            setRecipes(mapped);
+            setLoading(false);
+            setError(null);
+          },
+          (err) => {
+            setError(new Error(err.message));
+            setLoading(false);
+          }
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error("Unable to connect to Firestore")
+        );
+        setLoading(false);
+      }
     }
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const refetch = useCallback(async () => {

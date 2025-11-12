@@ -21,7 +21,7 @@ import { createUserMessage } from "./RecipeChatbot.utils";
 import { useRecipeVariant } from "@/components/recipe-variant-provider/RecipeVariantProvider";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatInput } from "./ChatInput";
-import { fetchDedupe } from "@/lib/shared/utils/fetchDedupe";
+import { fetchDedupe } from "@/lib/client/utils/fetchDedupe";
 
 const snapPoints = ["350px", 0.5, 0.75, 1];
 

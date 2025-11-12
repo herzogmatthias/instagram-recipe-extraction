@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { fetchDedupe } from "@/lib/shared/utils/fetchDedupe";
+import { fetchDedupe } from "@/lib/client/utils/fetchDedupe";
 import { toast } from "sonner";
 import type {
   RecipeDetailHeaderProps,

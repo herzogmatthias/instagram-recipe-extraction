@@ -8,6 +8,49 @@ import { Type, FunctionDeclaration } from "@google/genai";
 import type { RecipeData } from "@/models/InstagramRecipePost";
 import type { ChatMessage } from "@/components/recipe-chatbot/RecipeChatbot.types";
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 10000;
+
+/**
+ * Exponential backoff with jitter
+ */
+function getRetryDelay(attempt: number): number {
+  const delay = Math.min(
+    INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt),
+    MAX_RETRY_DELAY_MS
+  );
+  // Add jitter to avoid thundering herd
+  return delay + Math.random() * 1000;
+}
+
+/**
+ * Check if error is retryable (503 or rate limit)
+ */
+function isRetryableError(error: unknown): boolean {
+  if (error && typeof error === "object") {
+    const err = error as { status?: number; code?: number; message?: string };
+    return (
+      err.status === 503 ||
+      err.code === 503 ||
+      err.status === 429 ||
+      err.code === 429 ||
+      (err.message?.includes("503") ?? false) ||
+      (err.message?.toLowerCase().includes("service unavailable") ?? false) ||
+      (err.message?.toLowerCase().includes("rate limit") ?? false)
+    );
+  }
+  return false;
+}
+
+/**
+ * Sleep for specified milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export interface ChatRequest {
   recipeId: string;
   variantId?: string;
@@ -60,7 +103,7 @@ Important:
 
 // Function declaration for creating recipe variants
 const CREATE_VARIANT_FUNCTION: FunctionDeclaration = {
-  name: "create_recipe_variant",
+  name: "CreateRecipeVariant",
   description:
     "Creates a new variant of the current recipe with modifications requested by the user. Use this when the user asks to modify the recipe (make it vegan, spicier, gluten-free, etc.)",
   parameters: {
@@ -169,12 +212,16 @@ const CREATE_VARIANT_FUNCTION: FunctionDeclaration = {
 export async function chatWithRecipe(
   request: ChatRequest
 ): Promise<ChatResponse> {
-  const client = getGeminiClient();
-  const model = await getDefaultModel();
+  let lastError: unknown;
 
-  // Build dynamic system instruction with recipe context
-  const systemInstruction = request.recipeData
-    ? `${SYSTEM_INSTRUCTION}
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const client = await getGeminiClient();
+      const model = await getDefaultModel();
+
+      // Build dynamic system instruction with recipe context
+      const systemInstruction = request.recipeData
+        ? `${SYSTEM_INSTRUCTION}
 
 CURRENT RECIPE YOU ARE HELPING WITH:
 Title: ${request.recipeData.title}
@@ -198,51 +245,71 @@ ${request.recipeData.steps
   .join("\n")}
 
 Always reference this specific recipe when answering questions.`
-    : SYSTEM_INSTRUCTION;
+        : SYSTEM_INSTRUCTION;
 
-  // Convert history to Gemini format
-  const history = request.history.map((msg) => ({
-    role: msg.role === "assistant" ? "model" : "user",
-    parts: [{ text: msg.content }],
-  }));
+      // Convert history to Gemini format
+      const history = request.history.map((msg) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
 
-  // Add user message to history
-  const contents = [
-    ...history,
-    {
-      role: "user" as const,
-      parts: [{ text: request.message }],
-    },
-  ];
+      // Add user message to history
+      const contents = [
+        ...history,
+        {
+          role: "user" as const,
+          parts: [{ text: request.message }],
+        },
+      ];
 
-  const result = await client.models.generateContent({
-    model,
-    contents,
-    config: {
-      systemInstruction,
-      temperature: 0.7,
-    },
-  });
+      const result = await client.models.generateContent({
+        model,
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        },
+      });
 
-  // Get text response
-  const text =
-    result.text?.trim() || "I'm sorry, I couldn't generate a response.";
+      // Get text response
+      const text =
+        result.text?.trim() || "I'm sorry, I couldn't generate a response.";
 
-  return {
-    message: text,
-    messageId: `msg_${Date.now()}`,
-  };
+      return {
+        message: text,
+        messageId: `msg_${Date.now()}`,
+      };
+    } catch (error) {
+      lastError = error;
+      console.error(`Chat attempt ${attempt + 1} failed:`, error);
+
+      if (!isRetryableError(error) || attempt === MAX_RETRIES - 1) {
+        break;
+      }
+
+      const delay = getRetryDelay(attempt);
+      console.log(`Retrying in ${delay}ms...`);
+      await sleep(delay);
+    }
+  }
+
+  // If all retries failed, throw the last error
+  throw lastError;
 }
 
 export async function* streamChatWithRecipe(
   request: ChatRequest
 ): AsyncGenerator<StreamChunk> {
-  const client = getGeminiClient();
-  const model = await getDefaultModel();
+  let lastError: unknown;
 
-  // Build dynamic system instruction with recipe context
-  const systemInstruction = request.recipeData
-    ? `${SYSTEM_INSTRUCTION}
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const client = await getGeminiClient();
+      const model = await getDefaultModel();
+
+      // Build dynamic system instruction with recipe context
+      const systemInstruction = request.recipeData
+        ? `${SYSTEM_INSTRUCTION}
 
 CURRENT RECIPE YOU ARE HELPING WITH:
 Title: ${request.recipeData.title}
@@ -266,142 +333,108 @@ ${request.recipeData.steps
   .join("\n")}
 
 Always reference this specific recipe when answering questions.`
-    : SYSTEM_INSTRUCTION;
+        : SYSTEM_INSTRUCTION;
 
-  // Convert history to Gemini format
-  const history = request.history.map((msg) => ({
-    role: msg.role === "assistant" ? "model" : "user",
-    parts: [{ text: msg.content }],
-  }));
+      // Convert history to Gemini format
+      const history = request.history.map((msg) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
 
-  // Add user message to history
-  const contents = [
-    ...history,
-    {
-      role: "user" as const,
-      parts: [{ text: request.message }],
-    },
-  ];
+      // Add user message to history
+      const contents = [
+        ...history,
+        {
+          role: "user" as const,
+          parts: [{ text: request.message }],
+        },
+      ];
 
-  // Log function declaration being sent
-  console.log("Registering function with Gemini:", {
-    name: CREATE_VARIANT_FUNCTION.name,
-    hasParams: !!CREATE_VARIANT_FUNCTION.parameters,
-    topLevelProps: CREATE_VARIANT_FUNCTION.parameters?.properties
-      ? Object.keys(CREATE_VARIANT_FUNCTION.parameters.properties)
-      : [],
-  });
+      // Log function declaration being sent
+      console.log("Registering function with Gemini:", {
+        name: CREATE_VARIANT_FUNCTION.name,
+        hasParams: !!CREATE_VARIANT_FUNCTION.parameters,
+        topLevelProps: CREATE_VARIANT_FUNCTION.parameters?.properties
+          ? Object.keys(CREATE_VARIANT_FUNCTION.parameters.properties)
+          : [],
+      });
 
-  const result = await client.models.generateContentStream({
-    model,
-    contents,
-    config: {
-      systemInstruction,
-      temperature: 0.7,
-      tools: [{ functionDeclarations: [CREATE_VARIANT_FUNCTION] }],
-    },
-  });
+      const result = await client.models.generateContentStream({
+        model,
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+          tools: [{ functionDeclarations: [CREATE_VARIANT_FUNCTION] }],
+        },
+      });
 
-  // Stream chunks as they arrive
-  for await (const chunk of result) {
-    // Log the chunk structure to debug
-    console.log(
-      "Chunk structure:",
-      JSON.stringify({
-        hasText: !!chunk.text,
-        hasFunctionCalls: !!chunk.functionCalls,
-        candidates: chunk.candidates?.length || 0,
-      })
-    );
+      // Stream chunks as they arrive
+      for await (const chunk of result) {
+        // Log the chunk structure to debug
+        console.log(
+          "Chunk structure:",
+          JSON.stringify({
+            hasText: !!chunk.text,
+            hasFunctionCalls: !!chunk.functionCalls,
+            candidates: chunk.candidates?.length || 0,
+          })
+        );
 
-    // Try to get text from the response
-    // The warning suggests using .text() concatenates all parts
-    // Let's try accessing candidates->content->parts directly
-    if (chunk.candidates && chunk.candidates.length > 0) {
-      const candidate = chunk.candidates[0];
-      if (candidate.content && candidate.content.parts) {
-        for (const part of candidate.content.parts) {
-          if (part.text) {
-            yield { type: "content", content: part.text };
+        // Try to get text from the response
+        // The warning suggests using .text() concatenates all parts
+        // Let's try accessing candidates->content->parts directly
+        if (chunk.candidates && chunk.candidates.length > 0) {
+          const candidate = chunk.candidates[0];
+          if (candidate.content && candidate.content.parts) {
+            for (const part of candidate.content.parts) {
+              if (part.text) {
+                yield { type: "content", content: part.text };
+              }
+            }
+          }
+        }
+
+        // Check for function calls
+        if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+          for (const functionCall of chunk.functionCalls) {
+            console.log("Raw function call from Gemini:", {
+              name: functionCall.name,
+              hasArgs: !!functionCall.args,
+              argsKeys: functionCall.args ? Object.keys(functionCall.args) : [],
+            });
+
+            if (functionCall.name && functionCall.args) {
+              console.log("Function call detected:", functionCall.name);
+              yield {
+                type: "function_call",
+                function_call: {
+                  name: functionCall.name,
+                  args: functionCall.args,
+                },
+              };
+            }
           }
         }
       }
-    }
 
-    // Check for function calls
-    if (chunk.functionCalls && chunk.functionCalls.length > 0) {
-      for (const functionCall of chunk.functionCalls) {
-        console.log("Raw function call from Gemini:", {
-          name: functionCall.name,
-          hasArgs: !!functionCall.args,
-          argsKeys: functionCall.args ? Object.keys(functionCall.args) : [],
-        });
+      // Signal completion and exit successfully
+      yield { type: "done", done: true };
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error(`Stream chat attempt ${attempt + 1} failed:`, error);
 
-        if (functionCall.name && functionCall.args) {
-          console.log("Function call detected:", functionCall.name);
-          yield {
-            type: "function_call",
-            function_call: {
-              name: functionCall.name,
-              args: functionCall.args,
-            },
-          };
-        }
+      if (!isRetryableError(error) || attempt === MAX_RETRIES - 1) {
+        break;
       }
+
+      const delay = getRetryDelay(attempt);
+      console.log(`Retrying in ${delay}ms...`);
+      await sleep(delay);
     }
   }
 
-  // Signal completion
-  yield { type: "done", done: true };
-}
-
-export async function generateVariantFromPrompt(
-  prompt: string,
-  currentRecipe: RecipeData
-): Promise<{ name: string; recipe_data: RecipeData; changes: string[] }> {
-  const client = getGeminiClient();
-
-  const fullPrompt = `Given this recipe:
-Title: ${currentRecipe.title}
-Ingredients: ${currentRecipe.ingredients
-    .map((i) => `${i.quantity || ""} ${i.unit || ""} ${i.name}`)
-    .join(", ")}
-Steps: ${currentRecipe.steps.map((s) => s.text).join(" ")}
-
-User request: ${prompt}
-
-Please generate a JSON response with the following structure:
-{
-  "name": "variant name (e.g., 'Spicy Version')",
-  "recipe_data": { <complete modified recipe data with title, ingredients, steps, etc.> },
-  "changes": ["list", "of", "key", "changes"]
-}`;
-
-  const result = await client.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: fullPrompt }],
-      },
-    ],
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      temperature: 0.7,
-      responseMimeType: "application/json",
-    },
-  });
-
-  const text = result.text?.trim();
-  if (!text) {
-    throw new Error("No variant generated");
-  }
-
-  const parsed = JSON.parse(text);
-
-  return {
-    name: parsed.name as string,
-    recipe_data: parsed.recipe_data as RecipeData,
-    changes: parsed.changes as string[],
-  };
+  // If all retries failed, throw the last error
+  throw lastError;
 }

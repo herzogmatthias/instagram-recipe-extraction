@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import {
   getMissingConfigMessage,
   getSetupProgress,
-} from "@/lib/shared/utils/readinessFlags";
-import type { ReadinessFlags } from "@/lib/shared/utils/readinessFlags";
+} from "@/lib/client/utils/readinessFlags";
+import type { ReadinessFlags } from "@/lib/client/utils/readinessFlags";
 import { Progress } from "@/components/ui/progress";
 
 export type SetupBannerProps = {
@@ -29,7 +29,7 @@ export function SetupBanner({ flags, onDismiss }: SetupBannerProps) {
   const message = getMissingConfigMessage(flags);
 
   return (
-    <div className="border-b border-[#F3C6A5] bg-[#F3C6A5]/20">
+    <div className="fixed top-16 left-0 right-0 z-40 border-b border-[#F3C6A5] bg-[#F3C6A5]/20 backdrop-blur supports-[backdrop-filter]:bg-[#F3C6A5]/30">
       <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1">

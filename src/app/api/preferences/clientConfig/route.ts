@@ -1,11 +1,36 @@
 /**
+ * GET /api/preferences/clientConfig
+ * Retrieves Firebase Client SDK configuration
+ *
  * POST /api/preferences/clientConfig
  * Saves Firebase Client SDK configuration
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { setClientConfig } from "@/lib/server/services/firestore/userpreferences";
+import {
+  getUserPreferences,
+  setClientConfig,
+} from "@/lib/server/services/firestore/userpreferences";
 import type { FirebaseClientConfig } from "@/models/UserPreferences";
+
+export async function GET() {
+  try {
+    const preferences = await getUserPreferences();
+
+    return NextResponse.json(
+      {
+        clientConfig: preferences?.clientConfig || null,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error fetching client config:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch client configuration" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

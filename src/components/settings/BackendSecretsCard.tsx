@@ -15,7 +15,7 @@ import type {
   BackendSecretsFormData,
 } from "./settings.types";
 import { parseServiceAccountJSON, formatLastValidated } from "./settings.utils";
-import { encryptSecretsClient } from "@/lib/shared/utils/clientEncryption";
+import { encryptSecretsClient } from "@/lib/client/utils/clientEncryption";
 
 export function BackendSecretsCard({
   existingSecrets = [],

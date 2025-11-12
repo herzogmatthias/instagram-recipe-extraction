@@ -36,7 +36,15 @@ export default function RootLayout({
           <ProcessingQueueProvider>
             <NavbarWrapper />
             <SetupBannerWrapper />
-            <div className="pt-16">{children}</div>
+            {/* pt-16 for navbar, CSS variable for banner height */}
+            <div
+              className="pt-16"
+              style={{
+                paddingTop: "calc(4rem + var(--setup-banner-height, 0px))",
+              }}
+            >
+              {children}
+            </div>
             <Toaster richColors position="top-right" />
           </ProcessingQueueProvider>
         </ThemeProvider>

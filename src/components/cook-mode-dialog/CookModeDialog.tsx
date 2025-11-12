@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useRecipeDetail } from "@/lib/client/state/recipeDetailStore";
 import type { CookModeDialogProps } from "./CookModeDialog.types";
-import { buildDisplayIngredient } from "@/lib/shared/utils/ingredientUtils";
+import { buildDisplayIngredient } from "@/lib/client/utils/ingredientUtils";
 
 export function CookModeDialog({ recipe }: CookModeDialogProps) {
   const {
