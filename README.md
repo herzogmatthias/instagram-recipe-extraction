@@ -39,13 +39,13 @@ Import any Instagram post, extract every cooking detail with Gemini, and manage 
    npm install
    ```
 
-2. **Add credentials via Settings UI**
+2. **Add credentials via Settings UI** _(only `ENCRYPTION_MASTER_KEY` must live in `.env` or your deployment secrets; everything else can be entered in-app)_
 
    - Run `npm run dev` and open [http://localhost:3000/settings](http://localhost:3000/settings).
    - In **Firebase Client**, paste the frontend config (API key, project ID, etc.).
    - In **Backend Secrets**, provide your `APIFY_API_KEY`, `GEMINI_API_KEY`, and upload/paste the Firebase Admin service account JSON.
-   - Generate and enter an `ENCRYPTION_MASTER_KEY`, then pick your preferred Gemini model under **Model Preference**.
-   - Everything is stored securely in Firestore, so you can skip editing `.env` files altogether if you prefer the UI workflow.
+   - Generate and enter an `ENCRYPTION_MASTER_KEY`, then pick your preferred Gemini model under **Model Preference**. This master key must be provided via `.env` (or your hosting provider’s secret manager); it is not editable from the UI for safety.
+   - Everything else is stored securely in Firestore via the Settings UI, so you can skip managing additional `.env` values once the master key is set.
 
 3. **Run Firebase Emulator/Rules (optional but recommended)**
 
