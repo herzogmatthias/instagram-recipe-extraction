@@ -2,21 +2,22 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Loader2, ShoppingBag } from "lucide-react";
+import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ShoppingListItemCard } from "@/components/shopping-list/ShoppingListItemCard";
 import { useShoppingList } from "@/lib/client/hooks/useShoppingList";
 import {
   deleteShoppingListItem,
+  deleteAllShoppingListItems,
   updateShoppingListItem,
 } from "@/lib/client/services/shoppingList";
 import type { ShoppingListItemUpdateInput } from "@/models/ShoppingListItem";
-
 export default function ShoppingListPage() {
   const { items, loading, error } = useShoppingList();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const handleUpdate = async (
     id: string,
@@ -46,6 +47,19 @@ export default function ShoppingListPage() {
       throw err instanceof Error ? err : new Error("Failed to delete item");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    setClearingAll(true);
+    try {
+      await deleteAllShoppingListItems();
+      toast.success("Shopping list cleared.");
+    } catch (err) {
+      console.error("[shopping-list] delete all failed", err);
+      toast.error("Unable to clear the shopping list.");
+    } finally {
+      setClearingAll(false);
     }
   };
 
@@ -79,6 +93,27 @@ export default function ShoppingListPage() {
               <span className="text-sm text-[#333333]/60">
                 {items.length} item{items.length === 1 ? "" : "s"} tracked
               </span>
+              {items.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-full border-[#EAEAEA] text-red-600 hover:text-red-600"
+                  onClick={handleDeleteAll}
+                  disabled={clearingAll}
+                >
+                  {clearingAll ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Clearing...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Clear all
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </header>

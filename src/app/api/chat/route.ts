@@ -4,8 +4,6 @@ import {
   getOrCreateThread,
   addMessage,
 } from "@/lib/server/services/firestore/threads";
-import { createVariant } from "@/lib/server/services/firestore/operations";
-import type { RecipeData } from "@/models/InstagramRecipePost";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,10 +69,11 @@ export async function POST(request: NextRequest) {
 
     const encoder = new TextEncoder();
     let assistantContent = "";
-    let functionCallData: {
+    const executedFunctionCalls: {
       name: string;
       args: Record<string, unknown>;
-    } | null = null;
+      result?: Record<string, unknown>;
+    }[] = [];
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -93,47 +92,15 @@ export async function POST(request: NextRequest) {
               assistantContent += chunk.content;
             }
 
-            // Handle function calls
-            if (chunk.type === "function_call" && chunk.function_call) {
-              functionCallData = chunk.function_call;
-
-              // Execute the function call
-              if (functionCallData.name === "create_recipe_variant") {
-                try {
-                  const args = functionCallData.args as {
-                    variant_name: string;
-                    recipe_data: RecipeData;
-                    changes_summary: string[];
-                  };
-
-                  // Create the variant in Firestore
-                  const newVariant = await createVariant({
-                    recipeId,
-                    name: args.variant_name,
-                    recipe_data: args.recipe_data,
-                    isOriginal: false,
-                  });
-
-                  // Send variant preview to client
-                  const previewData = `data: ${JSON.stringify({
-                    type: "variant_preview",
-                    variant: {
-                      id: newVariant.id,
-                      name: args.variant_name,
-                      recipe_data: args.recipe_data,
-                      changes: args.changes_summary,
-                    },
-                  })}\n\n`;
-                  controller.enqueue(encoder.encode(previewData));
-                } catch (error) {
-                  console.error("Error creating variant:", error);
-                  const errorData = `data: ${JSON.stringify({
-                    type: "error",
-                    error: "Failed to create variant",
-                  })}\n\n`;
-                  controller.enqueue(encoder.encode(errorData));
-                }
-              }
+            if (
+              chunk.type === "function_execution" &&
+              chunk.function_call
+            ) {
+              executedFunctionCalls.push({
+                name: chunk.function_call.name,
+                args: chunk.function_call.args,
+                result: chunk.function_call.result,
+              });
             }
 
             const data = `data: ${JSON.stringify(chunk)}\n\n`;
@@ -141,19 +108,15 @@ export async function POST(request: NextRequest) {
           }
 
           // Save assistant message to thread after streaming completes
-          if (assistantContent || functionCallData) {
+          if (assistantContent || executedFunctionCalls.length > 0) {
             await addMessage(thread.id, {
               role: "assistant",
               content: assistantContent,
               createdBy: "assistant",
-              functionCalls: functionCallData
-                ? [
-                    {
-                      name: functionCallData.name,
-                      args: functionCallData.args,
-                    },
-                  ]
-                : undefined,
+              functionCalls:
+                executedFunctionCalls.length > 0
+                  ? executedFunctionCalls
+                  : undefined,
             });
           }
 

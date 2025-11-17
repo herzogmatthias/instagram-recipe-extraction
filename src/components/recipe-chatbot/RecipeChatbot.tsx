@@ -32,7 +32,8 @@ export function RecipeChatbot({
   originalRecipeData,
   className,
 }: RecipeChatbotProps) {
-  const { isOriginal, activeVariantId } = useRecipeVariant();
+  const { isOriginal, activeVariantId, setActiveRecipeData } =
+    useRecipeVariant();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -225,6 +226,21 @@ export function RecipeChatbot({
                   changes: data.variant.changes,
                   variantId: data.variant.id,
                 });
+              }
+
+              if (data.type === "recipe_update" && data.recipe_update) {
+                const { recipe_data, variantId: targetVariantId, isOriginal: targetIsOriginal } =
+                  data.recipe_update;
+
+                const shouldApply =
+                  (isOriginal && targetIsOriginal) ||
+                  (!isOriginal &&
+                    targetVariantId &&
+                    targetVariantId === activeVariantId);
+
+                if (shouldApply) {
+                  setActiveRecipeData(recipe_data);
+                }
               }
 
               if (data.type === "done") {

@@ -6,6 +6,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /imports/{importId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Chat threads
     match /threads/{threadId} {
       allow read: if true;
@@ -33,6 +38,10 @@ service cloud.firestore {
       // Client applications should use API endpoints to manage secrets
       // This rule allows reading the document but the API should never
       // return the secrets field to the client
+    }
+
+    match /shoppingListItems/{itemId} {
+      allow read, write: if true;
     }
 
     match /{document=**} {

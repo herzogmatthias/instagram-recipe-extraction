@@ -234,7 +234,9 @@ export default function Home() {
       }
 
       if (filters.maxTotalTime !== null && filters.maxTotalTime !== undefined) {
-        const recipeTotalTime = recipe.recipe_data?.total_time_min;
+        const recipeTotalTime =
+          (recipe.recipe_data?.prep_time_min || 0) +
+          (recipe.recipe_data?.cook_time_min || 0);
         if (!recipeTotalTime || recipeTotalTime > filters.maxTotalTime) {
           return false;
         }

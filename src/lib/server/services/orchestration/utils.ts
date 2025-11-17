@@ -70,7 +70,14 @@ export function toErrorMessage(error: unknown): string {
 
 export async function checkIfCancelled(importId: string): Promise<void> {
   const current = await getImport(importId);
-  if (current?.status === "failed" && current?.error?.includes("Cancelled")) {
+  const errorText = current?.error
+    ? current.error.toLowerCase()
+    : undefined;
+  const cancelled =
+    current?.status === "failed" &&
+    errorText !== undefined &&
+    (errorText.includes("cancelled") || errorText.includes("canceled"));
+  if (cancelled) {
     throw new Error("Import was cancelled");
   }
 }

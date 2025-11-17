@@ -37,7 +37,11 @@ export function NavbarWrapper() {
     async (id: string) => {
       const item = processingQueue.find((queueItem) => queueItem.id === id);
       const isTerminal =
-        item && (item.status === "ready" || item.status === "failed");
+        !!item &&
+        (item.status === "ready" ||
+          item.status === "failed" ||
+          item.stage === "ready" ||
+          item.stage === "failed");
 
       try {
         if (!isTerminal) {

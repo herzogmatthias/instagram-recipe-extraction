@@ -5,6 +5,8 @@
 import type {
   InstagramRecipePost,
   RecipeStatus,
+  RecipeData,
+  Ingredient,
 } from "@/models/InstagramRecipePost";
 import type { RecipeImportDocument as RecipeImportRecord } from "@/models/RecipeImport";
 import type {
@@ -341,4 +343,72 @@ export async function listVariants(
   const col = getVariantsCollection(recipeId);
   const snap = await col.orderBy("createdAt", "asc").get();
   return snap.docs.map((doc) => deserializeVariant(doc));
+}
+
+/**
+ * Helpers for chatbot tools
+ */
+
+export async function getRecipeDataForContext(
+  recipeId: string,
+  variantId?: string
+): Promise<RecipeData | null> {
+  if (variantId) {
+    const variant = await getVariant(recipeId, variantId);
+    return variant?.recipe_data ?? null;
+  }
+
+  const recipe = await getRecipe(recipeId);
+  return recipe?.recipe_data ?? null;
+}
+
+export async function updateRecipeIngredientByIndex({
+  recipeId,
+  variantId,
+  ingredientIndex,
+  ingredient,
+}: {
+  recipeId: string;
+  variantId?: string;
+  ingredientIndex: number;
+  ingredient: Ingredient;
+}): Promise<RecipeData> {
+  const recipeData = await getRecipeDataForContext(recipeId, variantId);
+  if (!recipeData || !Array.isArray(recipeData.ingredients)) {
+    throw new Error("Recipe data not found for ingredient update.");
+  }
+
+  if (
+    ingredientIndex < 0 ||
+    ingredientIndex >= recipeData.ingredients.length
+  ) {
+    throw new Error(`Ingredient index ${ingredientIndex} is out of range.`);
+  }
+
+  const updatedIngredients = [...recipeData.ingredients];
+  updatedIngredients[ingredientIndex] = ingredient;
+  const updatedRecipeData: RecipeData = {
+    ...recipeData,
+    ingredients: updatedIngredients,
+  };
+
+  console.log(
+    "[firestore] Updating ingredient",
+    ingredientIndex,
+    "on",
+    variantId ? `variant ${variantId}` : `recipe ${recipeId}`
+  );
+
+  if (variantId) {
+    await updateVariant(recipeId, variantId, {
+      recipe_data: updatedRecipeData,
+    });
+  } else {
+    await getRecipesCollection().doc(recipeId).update({
+      recipe_data: updatedRecipeData,
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  return updatedRecipeData;
 }

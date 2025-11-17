@@ -81,7 +81,10 @@ export function formatMacros(macros?: Macros | null): string | null {
 export function formatMetaPills(recipe: InstagramRecipePost): string[] {
   const pills: string[] = [];
 
-  const time = formatTime(recipe.recipe_data?.total_time_min);
+  const time = formatTime(
+    (recipe.recipe_data?.prep_time_min || 0) +
+      (recipe.recipe_data?.cook_time_min || 0)
+  );
   if (time) pills.push(time);
 
   const macros = formatMacros(recipe.recipe_data?.macros_per_serving);

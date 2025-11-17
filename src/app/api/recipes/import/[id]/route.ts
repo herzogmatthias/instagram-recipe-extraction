@@ -80,6 +80,7 @@ export async function DELETE(
     );
     await updateImport(id, {
       status: "failed",
+      stage: "failed",
       error: "Import cancelled by user",
       progress: 0,
     });

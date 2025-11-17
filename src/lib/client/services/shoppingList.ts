@@ -2,6 +2,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   serverTimestamp,
   updateDoc,
   writeBatch,
@@ -68,4 +69,16 @@ export async function deleteShoppingListItem(id: string): Promise<void> {
   const db = await getClientFirestore();
   const docRef = doc(db, SHOPPING_LIST_COLLECTION, id);
   await deleteDoc(docRef);
+}
+
+export async function deleteAllShoppingListItems(): Promise<void> {
+  const db = await getClientFirestore();
+  const snapshot = await getDocs(collection(db, SHOPPING_LIST_COLLECTION));
+  const batch = writeBatch(db);
+
+  snapshot.docs.forEach((docSnapshot) => {
+    batch.delete(docSnapshot.ref);
+  });
+
+  await batch.commit();
 }

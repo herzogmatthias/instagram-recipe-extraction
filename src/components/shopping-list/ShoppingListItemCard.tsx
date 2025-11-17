@@ -1,22 +1,10 @@
 "use client";
 
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Trash2, Check, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import type {
   ShoppingFieldProps,
   ShoppingListItemCardProps,
@@ -34,7 +22,6 @@ export function ShoppingListItemCard({
   onDelete,
 }: ShoppingListItemCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [formValues, setFormValues] = useState({
     item: item.item,
     quantity: item.quantity ?? "",
@@ -78,35 +65,21 @@ export function ShoppingListItemCard({
     setIsEditing(false);
   };
 
-  const handleDelete = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const handleDelete = async () => {
     if (isDeleting) return;
-
-    try {
-      await onDelete(item.id);
-      setConfirmOpen(false);
-    } catch {
-      setConfirmOpen(true);
-    }
+    await onDelete(item.id);
   };
 
   const isValid = formValues.item.trim().length > 0;
   const displayQuantity = getDisplayValue(item.quantity);
   const displayItem = getDisplayValue(item.item);
-  const displaySource =
-    item.source && item.source.trim().length > 0 ? (
-      <Badge className="rounded-full bg-[#D6E2C3] text-[#333333] hover:bg-[#D6E2C3]">
-        {item.source}
-      </Badge>
-    ) : (
-      getDisplayValue(item.source)
-    );
+  const displaySource = getDisplayValue(item.source);
   const addedAt = formatAddedDate(item.addedAt);
 
   return (
     <Card className="rounded-3xl border border-border/70 bg-white/90 p-4 shadow-sm">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="grid flex-1 gap-4 md:grid-cols-[minmax(0,150px)_minmax(0,1fr)_minmax(0,200px)]">
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,140px)_minmax(0,0.75fr)_minmax(0,1fr)]">
           <ShoppingField label="Quantity" displayValue={displayQuantity}>
             {isEditing && (
               <Input
@@ -150,84 +123,61 @@ export function ShoppingListItemCard({
           </ShoppingField>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {isEditing ? (
-            <>
-              <Button
-                size="sm"
-                className="gap-1 rounded-full bg-[#D6E2C3] text-[#333333] hover:bg-[#C8D5B2]"
-                onClick={handleSave}
-                disabled={!isValid || isSaving}
-              >
-                <Check className="h-4 w-4" />
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1 rounded-full border-[#EAEAEA]"
-                onClick={cancelEdit}
-                disabled={isSaving}
-              >
-                <X className="h-4 w-4" />
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1 rounded-full border-[#EAEAEA]"
-                onClick={startEdit}
-                disabled={isSaving || isDeleting}
-              >
-                <Pencil className="h-4 w-4" />
-                Edit
-              </Button>
-              <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1 rounded-full text-red-600 hover:bg-red-50"
-                    disabled={isDeleting || isSaving}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Remove this shopping list item?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action can&apos;t be undone. The item will be removed
-                      from your list.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-600 hover:bg-red-500"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <p className="text-xs text-muted-foreground">
+            Added {addedAt}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  size="sm"
+                  className="gap-1 rounded-full bg-[#D6E2C3] text-[#333333] hover:bg-[#C8D5B2]"
+                  onClick={handleSave}
+                  disabled={!isValid || isSaving}
+                >
+                  <Check className="h-4 w-4" />
+                  Save
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 rounded-full border-[#EAEAEA]"
+                  onClick={cancelEdit}
+                  disabled={isSaving}
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 rounded-full border-[#EAEAEA]"
+                  onClick={startEdit}
+                  disabled={isSaving || isDeleting}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 rounded-full text-red-600 hover:bg-red-50"
+                  onClick={handleDelete}
+                  disabled={isDeleting || isSaving}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Added {addedAt}
-      </p>
     </Card>
   );
 }

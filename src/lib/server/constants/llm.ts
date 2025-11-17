@@ -8,9 +8,8 @@ PRIORITY OF SOURCES
 3. Infer missing details conservatively; prefer null over guesswork.
 
 QUANTITIES
-- Include numeric quantities and units if visible.
+- Include numeric quantities and units if visible. You can also infer missing quantities from context or media (if you have a choice e.g. 2-3 tsp - use your judgement which value to choose and write a note).
 - If estimated from context or media, mark it in "assumptions" and lower confidence.
-- If unclear, set quantity:null and unit:null.
 
 CONFIDENCE (0..1)
 Start at 1.0 then:

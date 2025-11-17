@@ -14,9 +14,9 @@ import type { ModelPreferenceCardProps } from "./settings.types";
 import { validateGeminiModel, formatLastValidated } from "./settings.utils";
 
 const SUGGESTED_MODELS = [
-  { name: "gemini-1.5-pro", description: "Best for complex tasks" },
-  { name: "gemini-1.5-flash", description: "Fast and efficient" },
-  { name: "gemini-2.0-flash-exp", description: "Experimental features" },
+  { name: "gemini-2.5-pro", description: "Best for complex tasks" },
+  { name: "gemini-2.5-flash", description: "Fast and efficient" },
+  { name: "gemini-2.5-flash-exp", description: "Experimental features" },
 ];
 
 export function ModelPreferenceCard({

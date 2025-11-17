@@ -24,7 +24,9 @@ export function buildUserPrompt(params: ExtractRecipeParams): string {
   parts.push(
     `MEDIA\nA media file is attached; use it only to infer missing specifics (quantities, doneness, timings).`
   );
-  parts.push(`Now extract the recipe.`);
+  parts.push(
+    `Now extract the given recipe - if you are not able to determine specifics infer.`
+  );
 
   return parts.join("\n\n");
 }

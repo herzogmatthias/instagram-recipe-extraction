@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+} from "react";
 import type {
   InstagramRecipePost,
   RecipeData,
@@ -10,6 +16,7 @@ export type RecipeVariantContextValue = {
   activeVariantId: string;
   activeRecipeData: RecipeData | undefined;
   isOriginal: boolean;
+  setActiveRecipeData: (data: RecipeData | undefined) => void;
 };
 
 const RecipeVariantContext = createContext<RecipeVariantContextValue | null>(
@@ -24,8 +31,16 @@ export function RecipeVariantProvider({
   children: React.ReactNode;
 }) {
   const [activeVariantId, setActiveVariantId] = useState(recipe.id);
-  const [activeRecipeData, setActiveRecipeData] = useState(recipe.recipe_data);
+  const [activeRecipeData, setActiveRecipeDataState] = useState(
+    recipe.recipe_data
+  );
   const [isOriginal, setIsOriginal] = useState(true);
+  const setActiveRecipeData = useCallback(
+    (data: RecipeData | undefined) => {
+      setActiveRecipeDataState(data);
+    },
+    []
+  );
 
   useEffect(() => {
     const handleVariantChanged = async (event: Event) => {
@@ -41,7 +56,7 @@ export function RecipeVariantProvider({
 
       if (varIsOriginal) {
         // Switch back to original
-        setActiveRecipeData(recipe.recipe_data);
+        setActiveRecipeDataState(recipe.recipe_data);
       } else {
         // Fetch variant data
         try {
@@ -53,7 +68,7 @@ export function RecipeVariantProvider({
           }
 
           const variantData = await response.json();
-          setActiveRecipeData(variantData.recipe_data);
+          setActiveRecipeDataState(variantData.recipe_data);
         } catch (error) {
           console.error("Failed to load variant:", error);
         }
@@ -68,7 +83,12 @@ export function RecipeVariantProvider({
 
   return (
     <RecipeVariantContext.Provider
-      value={{ activeVariantId, activeRecipeData, isOriginal }}
+      value={{
+        activeVariantId,
+        activeRecipeData,
+        isOriginal,
+        setActiveRecipeData,
+      }}
     >
       {children}
     </RecipeVariantContext.Provider>

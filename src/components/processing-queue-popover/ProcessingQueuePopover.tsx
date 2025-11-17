@@ -72,8 +72,12 @@ export function ProcessingQueuePopover({
                         {item.title || item.url}
                       </p>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant={STATUS_BADGE_VARIANT[item.status]}>
-                          {STATUS_LABELS[item.status]}
+                        <Badge
+                          variant={
+                            STATUS_BADGE_VARIANT[item.stage ?? item.status]
+                          }
+                        >
+                          {STATUS_LABELS[item.stage ?? item.status]}
                         </Badge>
                         {item.status === "failed" && onRetryItem && (
                           <Button

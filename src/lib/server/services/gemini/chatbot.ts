@@ -4,9 +4,19 @@
  */
 
 import { getGeminiClient, getDefaultModel } from "./client";
-import { Type, FunctionDeclaration } from "@google/genai";
-import type { RecipeData } from "@/models/InstagramRecipePost";
+import {
+  Type,
+  FunctionDeclaration,
+  type Content,
+  type FunctionCall,
+} from "@google/genai";
+import type { Ingredient, RecipeData } from "@/models/InstagramRecipePost";
 import type { ChatMessage } from "@/components/recipe-chatbot/RecipeChatbot.types";
+import {
+  createVariant,
+  getRecipeDataForContext,
+  updateRecipeIngredientByIndex,
+} from "@/lib/server/services/firestore/operations";
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -74,16 +84,36 @@ export interface ChatResponse {
 }
 
 export interface StreamChunk {
-  type: "content" | "function_call" | "done";
+  type:
+    | "content"
+    | "function_call"
+    | "function_execution"
+    | "variant_preview"
+    | "recipe_update"
+    | "error"
+    | "done";
   content?: string;
   done?: boolean;
+  error?: string;
   function_call?: {
     name: string;
     args: Record<string, unknown>;
+    result?: Record<string, unknown>;
+  };
+  variant?: {
+    id: string;
+    name: string;
+    recipe_data: RecipeData;
+    changes: string[];
+  };
+  recipe_update?: {
+    recipe_data: RecipeData;
+    variantId?: string;
+    isOriginal?: boolean;
   };
 }
 
-const SYSTEM_INSTRUCTION = `You are a helpful recipe assistant. You help users understand and modify recipes.
+const SYSTEM_INSTRUCTION = `You are a helpful recipe assistant and nutrition expert. You help users understand and modify recipes as well as provide nutritional information and advice on ingredients and cooking techniques.
 
 You have access to the current recipe being viewed. Always refer to this recipe when answering questions.
 
@@ -99,7 +129,8 @@ Important:
 - Provide clear explanations
 - Always reference the specific recipe details when answering
 - When creating variants, provide a complete recipe_data object with ALL fields
-- Use descriptive variant names like "Vegan Version", "Spicy Variation", "Gluten-Free Adaptation"`;
+- Use descriptive variant names
+- When adjusting individual ingredients, first call GetRecipeIngredients to locate the correct ingredient id/index. Then call UpdateRecipeIngredient with a fully specified replacement.`;
 
 // Function declaration for creating recipe variants
 const CREATE_VARIANT_FUNCTION: FunctionDeclaration = {
@@ -209,93 +240,69 @@ const CREATE_VARIANT_FUNCTION: FunctionDeclaration = {
   },
 };
 
-export async function chatWithRecipe(
-  request: ChatRequest
-): Promise<ChatResponse> {
-  let lastError: unknown;
+const GET_INGREDIENTS_FUNCTION: FunctionDeclaration = {
+  name: "GetRecipeIngredients",
+  description:
+    "Returns the id, name, quantity, and unit for every ingredient in the active recipe. Call this before making targeted ingredient edits.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {},
+  },
+};
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const client = await getGeminiClient();
-      const model = await getDefaultModel();
-
-      // Build dynamic system instruction with recipe context
-      const systemInstruction = request.recipeData
-        ? `${SYSTEM_INSTRUCTION}
-
-CURRENT RECIPE YOU ARE HELPING WITH:
-Title: ${request.recipeData.title}
-Servings: ${request.recipeData.servings?.value || "Not specified"}
-Difficulty: ${request.recipeData.difficulty || "Not specified"}
-Cuisine: ${request.recipeData.cuisine || "Not specified"}
-
-Ingredients:
-${request.recipeData.ingredients
-  .map(
-    (ing) =>
-      `- ${ing.quantity || ""} ${ing.unit || ""} ${ing.name}${
-        ing.preparation ? ` (${ing.preparation})` : ""
-      }`
-  )
-  .join("\n")}
-
-Steps:
-${request.recipeData.steps
-  .map((step) => `${step.idx + 1}. ${step.text}`)
-  .join("\n")}
-
-Always reference this specific recipe when answering questions.`
-        : SYSTEM_INSTRUCTION;
-
-      // Convert history to Gemini format
-      const history = request.history.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      }));
-
-      // Add user message to history
-      const contents = [
-        ...history,
-        {
-          role: "user" as const,
-          parts: [{ text: request.message }],
+const UPDATE_INGREDIENT_FUNCTION: FunctionDeclaration = {
+  name: "UpdateRecipeIngredient",
+  description:
+    "Updates a specific ingredient (by its zero-based index) with a fully specified new ingredient object.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      ingredient_idx: {
+        type: Type.NUMBER,
+        description: "Zero-based index of the ingredient to replace.",
+      },
+      ingredient: {
+        type: Type.OBJECT,
+        description: "Complete ingredient payload to store in Firestore.",
+        properties: {
+          id: { type: Type.STRING, description: "Unique ingredient id." },
+          name: { type: Type.STRING, description: "Display name." },
+          quantity: {
+            type: Type.STRING,
+            description: "Quantity (number or fraction as string).",
+          },
+          unit: { type: Type.STRING, description: "Unit label." },
+          preparation: {
+            type: Type.STRING,
+            description: "Extra preparation details.",
+          },
+          section: {
+            type: Type.STRING,
+            description: "Ingredient section/category.",
+          },
+          optional: {
+            type: Type.BOOLEAN,
+            description: "Whether the ingredient is optional.",
+          },
+          chefs_note: {
+            type: Type.STRING,
+            description: "Optional chef notes for this ingredient.",
+          },
         },
-      ];
+        required: ["id", "name"],
+      },
+    },
+    required: ["ingredient_idx", "ingredient"],
+  },
+};
 
-      const result = await client.models.generateContent({
-        model,
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
-        },
-      });
+const CHAT_FUNCTIONS = [
+  CREATE_VARIANT_FUNCTION,
+  GET_INGREDIENTS_FUNCTION,
+  UPDATE_INGREDIENT_FUNCTION,
+];
 
-      // Get text response
-      const text =
-        result.text?.trim() || "I'm sorry, I couldn't generate a response.";
-
-      return {
-        message: text,
-        messageId: `msg_${Date.now()}`,
-      };
-    } catch (error) {
-      lastError = error;
-      console.error(`Chat attempt ${attempt + 1} failed:`, error);
-
-      if (!isRetryableError(error) || attempt === MAX_RETRIES - 1) {
-        break;
-      }
-
-      const delay = getRetryDelay(attempt);
-      console.log(`Retrying in ${delay}ms...`);
-      await sleep(delay);
-    }
-  }
-
-  // If all retries failed, throw the last error
-  throw lastError;
-}
+const MAX_FUNCTION_ITERATIONS = 5;
 
 export async function* streamChatWithRecipe(
   request: ChatRequest
@@ -304,137 +311,433 @@ export async function* streamChatWithRecipe(
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      console.log(
+        `[chatbot] Starting streamChatWithRecipe attempt ${
+          attempt + 1
+        } for recipe ${request.recipeId}`
+      );
       const client = await getGeminiClient();
       const model = await getDefaultModel();
+      const systemInstruction = buildSystemInstruction(request);
+      const conversation = buildConversationHistory(request);
+      let cachedRecipeData = request.recipeData;
+      let iterations = 0;
 
-      // Build dynamic system instruction with recipe context
-      const systemInstruction = request.recipeData
-        ? `${SYSTEM_INSTRUCTION}
-
-CURRENT RECIPE YOU ARE HELPING WITH:
-Title: ${request.recipeData.title}
-Servings: ${request.recipeData.servings?.value || "Not specified"}
-Difficulty: ${request.recipeData.difficulty || "Not specified"}
-Cuisine: ${request.recipeData.cuisine || "Not specified"}
-
-Ingredients:
-${request.recipeData.ingredients
-  .map(
-    (ing) =>
-      `- ${ing.quantity || ""} ${ing.unit || ""} ${ing.name}${
-        ing.preparation ? ` (${ing.preparation})` : ""
-      }`
-  )
-  .join("\n")}
-
-Steps:
-${request.recipeData.steps
-  .map((step) => `${step.idx + 1}. ${step.text}`)
-  .join("\n")}
-
-Always reference this specific recipe when answering questions.`
-        : SYSTEM_INSTRUCTION;
-
-      // Convert history to Gemini format
-      const history = request.history.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      }));
-
-      // Add user message to history
-      const contents = [
-        ...history,
-        {
-          role: "user" as const,
-          parts: [{ text: request.message }],
-        },
-      ];
-
-      // Log function declaration being sent
-      console.log("Registering function with Gemini:", {
-        name: CREATE_VARIANT_FUNCTION.name,
-        hasParams: !!CREATE_VARIANT_FUNCTION.parameters,
-        topLevelProps: CREATE_VARIANT_FUNCTION.parameters?.properties
-          ? Object.keys(CREATE_VARIANT_FUNCTION.parameters.properties)
-          : [],
-      });
-
-      const result = await client.models.generateContentStream({
-        model,
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
-          tools: [{ functionDeclarations: [CREATE_VARIANT_FUNCTION] }],
-        },
-      });
-
-      // Stream chunks as they arrive
-      for await (const chunk of result) {
-        // Log the chunk structure to debug
+      while (iterations < MAX_FUNCTION_ITERATIONS) {
         console.log(
-          "Chunk structure:",
-          JSON.stringify({
-            hasText: !!chunk.text,
-            hasFunctionCalls: !!chunk.functionCalls,
-            candidates: chunk.candidates?.length || 0,
-          })
+          `[chatbot] Iteration ${iterations + 1} - sending conversation with ${
+            conversation.length
+          } turns`
         );
+        iterations += 1;
 
-        // Try to get text from the response
-        // The warning suggests using .text() concatenates all parts
-        // Let's try accessing candidates->content->parts directly
-        if (chunk.candidates && chunk.candidates.length > 0) {
-          const candidate = chunk.candidates[0];
-          if (candidate.content && candidate.content.parts) {
-            for (const part of candidate.content.parts) {
-              if (part.text) {
-                yield { type: "content", content: part.text };
+        const result = await client.models.generateContentStream({
+          model,
+          contents: conversation,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+            tools: [{ functionDeclarations: CHAT_FUNCTIONS }],
+          },
+        });
+
+        let assistantParts: Content["parts"] | undefined;
+        let pendingFunctionCall: FunctionCall | null = null;
+
+        for await (const chunk of result) {
+          console.log(
+            "[chatbot] Received chunk",
+            JSON.stringify(
+              {
+                hasCandidates: !!chunk.candidates?.length,
+                hasFunctionCall: !!chunk.functionCalls?.length,
+              },
+              null,
+              2
+            )
+          );
+          if (chunk.candidates && chunk.candidates.length > 0) {
+            const candidate = chunk.candidates[0];
+            if (candidate.content && candidate.content.parts) {
+              assistantParts = candidate.content.parts;
+              for (const part of candidate.content.parts) {
+                if (part.text) {
+                  yield { type: "content", content: part.text };
+                }
               }
             }
           }
-        }
 
-        // Check for function calls
-        if (chunk.functionCalls && chunk.functionCalls.length > 0) {
-          for (const functionCall of chunk.functionCalls) {
-            console.log("Raw function call from Gemini:", {
-              name: functionCall.name,
-              hasArgs: !!functionCall.args,
-              argsKeys: functionCall.args ? Object.keys(functionCall.args) : [],
-            });
-
-            if (functionCall.name && functionCall.args) {
-              console.log("Function call detected:", functionCall.name);
-              yield {
-                type: "function_call",
-                function_call: {
-                  name: functionCall.name,
-                  args: functionCall.args,
-                },
-              };
-            }
+          if (
+            chunk.functionCalls &&
+            chunk.functionCalls.length > 0 &&
+            !pendingFunctionCall
+          ) {
+            pendingFunctionCall = chunk.functionCalls[0];
+            yield {
+              type: "function_call",
+              function_call: {
+                name: pendingFunctionCall.name ?? "unknown_function",
+                args: pendingFunctionCall.args ?? {},
+              },
+            };
           }
         }
+
+        conversation.push({
+          role: "model",
+          parts: assistantParts ?? [{ text: "" }],
+        });
+
+        if (!pendingFunctionCall) {
+          console.log("[chatbot] No function call requested, finishing.");
+          yield { type: "done", done: true };
+          return;
+        }
+
+        console.log(
+          "[chatbot] Executing function call",
+          pendingFunctionCall.name,
+          pendingFunctionCall.args
+        );
+        const execution = await executeFunctionCall(pendingFunctionCall, {
+          recipeId: request.recipeId,
+          variantId: request.variantId,
+          cachedRecipeData,
+        });
+
+        if (execution.updatedRecipeData) {
+          cachedRecipeData = execution.updatedRecipeData;
+        }
+
+        if (execution.events) {
+          for (const event of execution.events) {
+            yield event;
+          }
+        }
+
+        yield {
+          type: "function_execution",
+          function_call: {
+            name: pendingFunctionCall.name ?? "unknown_function",
+            args: pendingFunctionCall.args ?? {},
+            result: execution.response,
+          },
+        };
+
+        conversation.push({
+          role: "function",
+          parts: [
+            {
+              functionResponse: {
+                name: pendingFunctionCall.name,
+                response: execution.response,
+              },
+            },
+          ],
+        });
       }
 
-      // Signal completion and exit successfully
-      yield { type: "done", done: true };
-      return;
+      throw new Error(
+        "Exceeded maximum function iterations without a final response."
+      );
     } catch (error) {
       lastError = error;
-      console.error(`Stream chat attempt ${attempt + 1} failed:`, error);
-
+      console.error(
+        `[chatbot] streamChatWithRecipe attempt ${attempt + 1} failed`,
+        error
+      );
       if (!isRetryableError(error) || attempt === MAX_RETRIES - 1) {
         break;
       }
 
       const delay = getRetryDelay(attempt);
-      console.log(`Retrying in ${delay}ms...`);
       await sleep(delay);
     }
   }
 
-  // If all retries failed, throw the last error
   throw lastError;
+}
+
+type ToolExecutionContext = {
+  recipeId: string;
+  variantId?: string;
+  cachedRecipeData?: RecipeData;
+};
+
+type FunctionExecutionResult = {
+  response: Record<string, unknown>;
+  events?: StreamChunk[];
+  updatedRecipeData?: RecipeData | null;
+};
+
+type IngredientSummary = {
+  idx: number;
+  id: string;
+  name: string;
+  quantity: Ingredient["quantity"];
+  unit: Ingredient["unit"];
+};
+
+function buildConversationHistory(request: ChatRequest): Content[] {
+  const history = request.history.map((msg) => ({
+    role: msg.role === "assistant" ? "model" : "user",
+    parts: [{ text: msg.content }],
+  }));
+
+  return [
+    ...history,
+    {
+      role: "user",
+      parts: [{ text: request.message }],
+    },
+  ];
+}
+
+function buildSystemInstruction(request: ChatRequest): string {
+  if (!request.recipeData) {
+    return SYSTEM_INSTRUCTION;
+  }
+
+  const recipe = request.recipeData;
+  const ingredientLines = recipe.ingredients
+    .map(
+      (ing) =>
+        `- ${ing.quantity || ""} ${ing.unit || ""} ${ing.name}${
+          ing.preparation ? ` (${ing.preparation})` : ""
+        }`
+    )
+    .join("\n");
+
+  const stepLines = recipe.steps
+    .map((step) => `${step.idx + 1}. ${step.text}`)
+    .join("\n");
+
+  return `${SYSTEM_INSTRUCTION}
+
+CURRENT RECIPE YOU ARE HELPING WITH:
+Title: ${recipe.title}
+Servings: ${recipe.servings?.value || "Not specified"}
+Difficulty: ${recipe.difficulty || "Not specified"}
+Cuisine: ${recipe.cuisine || "Not specified"}
+
+Ingredients:
+${ingredientLines}
+
+Steps:
+${stepLines}
+
+Always reference this specific recipe when answering questions.`;
+}
+
+async function executeFunctionCall(
+  functionCall: FunctionCall,
+  context: ToolExecutionContext
+): Promise<FunctionExecutionResult> {
+  const name = functionCall.name ?? "unknown_function";
+  console.log("[chatbot] executeFunctionCall", name, functionCall.args);
+  try {
+    if (name === CREATE_VARIANT_FUNCTION.name) {
+      const args = functionCall.args as {
+        variant_name?: string;
+        recipe_data?: RecipeData;
+        changes_summary?: string[];
+      };
+
+      if (!args?.variant_name || !args?.recipe_data) {
+        throw new Error("variant_name and recipe_data are required.");
+      }
+
+      const changes = Array.isArray(args.changes_summary)
+        ? args.changes_summary.map((entry) => String(entry))
+        : [];
+
+      const newVariant = await createVariant({
+        recipeId: context.recipeId,
+        name: args.variant_name,
+        recipe_data: args.recipe_data,
+        isOriginal: false,
+      });
+
+      return {
+        response: {
+          success: true,
+          variantId: newVariant.id,
+          variantName: args.variant_name,
+        },
+        events: [
+          {
+            type: "variant_preview",
+            variant: {
+              id: newVariant.id,
+              name: args.variant_name,
+              recipe_data: args.recipe_data,
+              changes,
+            },
+          },
+        ],
+      };
+    }
+
+    if (name === GET_INGREDIENTS_FUNCTION.name) {
+      const { summaries, recipeData } = await getIngredientSummaries(context);
+      return {
+        response: {
+          success: true,
+          ingredients: summaries,
+        },
+        updatedRecipeData: recipeData,
+      };
+    }
+
+    if (name === UPDATE_INGREDIENT_FUNCTION.name) {
+      const idxValue =
+        functionCall.args?.ingredient_idx ?? functionCall.args?.idx;
+      const ingredientIdx = Number(idxValue);
+
+      if (!Number.isFinite(ingredientIdx)) {
+        throw new Error("ingredient_idx must be a valid number.");
+      }
+
+      const ingredientPayload = normalizeIngredientInput(
+        functionCall.args?.ingredient
+      );
+
+      const updatedRecipeData = await updateRecipeIngredientByIndex({
+        recipeId: context.recipeId,
+        variantId: context.variantId,
+        ingredientIndex: ingredientIdx,
+        ingredient: ingredientPayload,
+      });
+
+      return {
+        response: {
+          success: true,
+          ingredient_idx: ingredientIdx,
+          ingredient: ingredientPayload,
+        },
+        updatedRecipeData,
+        events: [
+          {
+            type: "recipe_update",
+            recipe_update: {
+              recipe_data: updatedRecipeData,
+              variantId: context.variantId ?? context.recipeId,
+              isOriginal: !context.variantId,
+            },
+          },
+        ],
+      };
+    }
+
+    return {
+      response: {
+        success: false,
+        error: `Unknown function ${name}`,
+      },
+      events: [
+        {
+          type: "error",
+          error: `Unknown function ${name}`,
+        },
+      ],
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Function execution failed.";
+    return {
+      response: {
+        success: false,
+        error: message,
+      },
+      events: [
+        {
+          type: "error",
+          error: message,
+        },
+      ],
+    };
+  }
+}
+
+async function getIngredientSummaries(
+  context: ToolExecutionContext
+): Promise<{ summaries: IngredientSummary[]; recipeData: RecipeData | null }> {
+  console.log(
+    "[chatbot] Fetching ingredient summaries for",
+    context.recipeId,
+    context.variantId ?? "original"
+  );
+  const recipeData =
+    (await getRecipeDataForContext(context.recipeId, context.variantId)) ??
+    context.cachedRecipeData ??
+    null;
+
+  if (!recipeData) {
+    throw new Error("Recipe data is unavailable.");
+  }
+
+  const summaries: IngredientSummary[] =
+    recipeData.ingredients?.map((ingredient, idx) => ({
+      idx,
+      id: ingredient.id,
+      name: ingredient.name,
+      quantity: ingredient.quantity ?? null,
+      unit: ingredient.unit ?? null,
+    })) ?? [];
+
+  console.log("[chatbot] Found ingredient summaries", summaries.length);
+
+  return { summaries, recipeData };
+}
+
+function normalizeIngredientInput(input: unknown): Ingredient {
+  if (!input || typeof input !== "object") {
+    throw new Error("ingredient payload must be an object.");
+  }
+
+  const candidate = input as Record<string, unknown>;
+  const id = candidate.id;
+  const name = candidate.name;
+
+  if (typeof id !== "string" || typeof name !== "string") {
+    throw new Error("ingredient.id and ingredient.name must be strings.");
+  }
+
+  const quantityValue = candidate.quantity;
+  let quantity: Ingredient["quantity"] = null;
+  if (typeof quantityValue === "number" || typeof quantityValue === "string") {
+    quantity = quantityValue;
+  }
+
+  const optional =
+    typeof candidate.optional === "boolean"
+      ? candidate.optional
+      : candidate.optional ?? undefined;
+
+  const unit = normalizeOptionalString(candidate.unit);
+  const preparation = normalizeOptionalString(candidate.preparation);
+  const section = normalizeOptionalString(candidate.section);
+  const chefsNote = normalizeOptionalString(candidate.chefs_note);
+
+  return {
+    id,
+    name,
+    quantity,
+    unit,
+    preparation,
+    section,
+    optional,
+    chefs_note: chefsNote ?? undefined,
+  };
+}
+
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return null;
+  }
+  return String(value);
 }
