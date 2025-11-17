@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 import {
   Moon,
   Sun,
-  Home,
   Clock,
   Settings,
   Plus,
   Filter,
   Ellipsis,
+  ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -88,12 +88,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <div className="flex items-center gap-3">
           <Link
-            href="/"
+            href="/shopping-list"
             className="hidden md:inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            data-testid="nav-library"
+            data-testid="nav-shopping-list"
           >
-            <Home className="w-4 h-4" />
-            Library
+            <ShoppingBag className="w-4 h-4" />
+            Shopping list
           </Link>
 
           <ProcessingQueuePopover
@@ -151,12 +151,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/"
-                    data-testid="nav-library-mobile"
+                    href="/shopping-list"
+                    data-testid="nav-shopping-list-mobile"
                     className="flex items-center gap-3"
                   >
-                    <Home className="h-4 w-4" />
-                    <span>Library</span>
+                    <ShoppingBag className="h-4 w-4" />
+                    <span>Shopping list</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

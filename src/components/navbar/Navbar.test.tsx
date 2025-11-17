@@ -85,14 +85,14 @@ describe("Navbar Component", () => {
   describe("4.2 - Navigation Items", () => {
     it("should render all three navigation items on larger screens", () => {
       renderNavbar();
-      expect(screen.getByTestId("nav-library")).toBeInTheDocument();
+      expect(screen.getByTestId("nav-shopping-list")).toBeInTheDocument();
       expect(screen.getByTestId("nav-processing")).toBeInTheDocument();
       expect(screen.getByTestId("nav-settings")).toBeInTheDocument();
     });
 
     it("should display navigation item labels", () => {
       renderNavbar();
-      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Shopping list")).toBeInTheDocument();
       expect(screen.getByText("Processing")).toBeInTheDocument();
       expect(screen.getByText("Settings")).toBeInTheDocument();
     });
@@ -106,7 +106,10 @@ describe("Navbar Component", () => {
 
     it("should navigate to correct routes for link items", () => {
       renderNavbar();
-      expect(screen.getByTestId("nav-library")).toHaveAttribute("href", "/");
+      expect(screen.getByTestId("nav-shopping-list")).toHaveAttribute(
+        "href",
+        "/shopping-list"
+      );
       expect(screen.getByTestId("nav-settings")).toHaveAttribute(
         "href",
         "/settings"
@@ -129,7 +132,9 @@ describe("Navbar Component", () => {
       await userEvent.click(screen.getByTestId("nav-overflow-mobile"));
 
       await waitFor(() =>
-        expect(screen.getByTestId("nav-library-mobile")).toBeInTheDocument()
+        expect(
+          screen.getByTestId("nav-shopping-list-mobile")
+        ).toBeInTheDocument()
       );
       expect(screen.getByTestId("nav-processing-mobile")).toBeInTheDocument();
       expect(screen.getByTestId("nav-settings-mobile")).toBeInTheDocument();
@@ -216,7 +221,7 @@ describe("Navbar Component", () => {
 
     it("should hide navigation items on small screens", () => {
       renderNavbar();
-      expect(screen.getByTestId("nav-library")).toHaveClass(
+      expect(screen.getByTestId("nav-shopping-list")).toHaveClass(
         "hidden",
         "md:inline-flex"
       );

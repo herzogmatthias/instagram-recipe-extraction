@@ -30,8 +30,7 @@ import type {
   GroupedSection,
 } from "./IngredientPanel.types";
 import { buildDisplayIngredient } from "./IngredientPanel.utils";
-
-const SHOPPING_LIST_KEY = "ire-shopping-list";
+import { addShoppingListItems } from "@/lib/client/services/shoppingList";
 
 export function IngredientPanel({ recipe }: IngredientPanelProps) {
   const {
@@ -64,14 +63,6 @@ export function IngredientPanel({ recipe }: IngredientPanelProps) {
       items,
     }));
   }, [recipe, servingsMultiplier, unitSystem]);
-  const flattened = useMemo(
-    () =>
-      sections.flatMap((section) =>
-        section.items.map((item) => item.primaryText)
-      ),
-    [sections]
-  );
-
   const handleCopy = async () => {
     const text = sections
       .map((section) => {
@@ -85,24 +76,30 @@ export function IngredientPanel({ recipe }: IngredientPanelProps) {
     await copyTextToClipboard(text, "Ingredients copied.");
   };
 
-  const handleAddToShoppingList = () => {
-    if (typeof window === "undefined") {
-      toast.error("Shopping list is only available in the browser.");
+  const handleAddToShoppingList = async () => {
+    if (sections.length === 0) {
+      toast.error("No ingredients available to add.");
       return;
     }
 
     try {
-      localStorage.setItem(
-        `${SHOPPING_LIST_KEY}:${recipe.id}`,
-        JSON.stringify({
-          items: flattened,
-          addedAt: new Date().toISOString(),
-        })
+      const sourceLabel =
+        recipe.recipe_data?.title?.trim() ||
+        recipe.ownerUsername ||
+        "Instagram recipe";
+      const items = sections.flatMap((section) =>
+        section.items.map((item) => ({
+          item: item.ingredient.name,
+          quantity: item.quantityText ?? null,
+          source: sourceLabel,
+          recipeId: recipe.id,
+        }))
       );
-      toast.success("Ingredients added to shopping list (local only).");
+      await addShoppingListItems(items);
+      toast.success("Ingredients added to your shopping list.");
     } catch (error) {
-      console.error(error);
-      toast.error("Unable to save shopping list locally.");
+      console.error("[shopping-list] unable to save items", error);
+      toast.error("Unable to add ingredients to the shopping list.");
     }
   };
 

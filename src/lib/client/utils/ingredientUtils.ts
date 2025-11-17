@@ -88,6 +88,7 @@ const CONVERSIONS: Record<string, ConversionRule> = {
 export type DisplayIngredient = {
   id: string;
   primaryText: string;
+  quantityText?: string | null;
   secondaryText?: string;
   optional?: boolean;
   chefsNote?: string;
@@ -111,6 +112,7 @@ export function buildDisplayIngredient(
   return {
     id: ingredient.id,
     primaryText: primaryText || ingredient.name,
+    quantityText: quantityText ?? null,
     secondaryText: secondary.join(" • ") || undefined,
     optional: ingredient.optional,
     chefsNote: ingredient.chefs_note,
