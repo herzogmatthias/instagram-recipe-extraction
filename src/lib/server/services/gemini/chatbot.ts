@@ -187,14 +187,37 @@ const CREATE_VARIANT_FUNCTION: FunctionDeclaration = {
             items: {
               type: Type.OBJECT,
               properties: {
-                id: { type: Type.STRING },
-                name: { type: Type.STRING },
-                quantity: { type: Type.NUMBER },
-                unit: { type: Type.STRING },
-                preparation: { type: Type.STRING },
-                section: { type: Type.STRING },
+                id: {
+                  type: Type.STRING,
+                  description: "Unique ingredient id e.g. ing_123",
+                },
+                name: {
+                  type: Type.STRING,
+                  description: "Ingredient name e.g. 'sugar'",
+                },
+                quantity: {
+                  type: Type.NUMBER,
+                  description: "Quantity as a number e.g. 1.5",
+                },
+                unit: {
+                  type: Type.STRING,
+                  description:
+                    "Unit of measurement; should be standardized e.g. 'g','ml', 'tsp'",
+                },
+                preparation: {
+                  type: Type.STRING,
+                  description: "Preparation details e.g. 'chopped', 'diced'",
+                },
+                section: {
+                  type: Type.STRING,
+                  description:
+                    "Ingredient section/category e.g. 'Dough', 'Filling'",
+                },
                 optional: { type: Type.BOOLEAN },
-                chefs_note: { type: Type.STRING },
+                chefs_note: {
+                  type: Type.STRING,
+                  description: "Optional chef notes for this ingredient.",
+                },
               },
               required: ["id", "name"],
             },
@@ -205,15 +228,29 @@ const CREATE_VARIANT_FUNCTION: FunctionDeclaration = {
             items: {
               type: Type.OBJECT,
               properties: {
-                idx: { type: Type.NUMBER },
-                text: { type: Type.STRING },
+                idx: { type: Type.NUMBER, description: "Step index" },
+                text: {
+                  type: Type.STRING,
+                  description: "Instruction text for this step",
+                },
                 used_ingredients: {
                   type: Type.ARRAY,
                   items: { type: Type.STRING },
+                  description: "List of ingredient ids used in this step",
                 },
-                section: { type: Type.STRING },
-                estimated_time_min: { type: Type.NUMBER },
-                chefs_note: { type: Type.STRING },
+                section: {
+                  type: Type.STRING,
+                  description:
+                    "Step section/category e.g. 'Preparation', 'Cooking'",
+                },
+                estimated_time_min: {
+                  type: Type.NUMBER,
+                  description: "Estimated time for this step in minutes",
+                },
+                chefs_note: {
+                  type: Type.STRING,
+                  description: "Optional chef notes for this step",
+                },
               },
               required: ["idx", "text", "used_ingredients"],
             },
@@ -425,6 +462,9 @@ export async function* streamChatWithRecipe(
           },
         };
 
+        const isVariantCall =
+          pendingFunctionCall.name === CREATE_VARIANT_FUNCTION.name;
+
         conversation.push({
           role: "function",
           parts: [
@@ -436,6 +476,14 @@ export async function* streamChatWithRecipe(
             },
           ],
         });
+
+        if (isVariantCall) {
+          console.log(
+            "[chatbot] CreateRecipeVariant executed - ending streaming loop."
+          );
+          yield { type: "done", done: true };
+          return;
+        }
       }
 
       throw new Error(

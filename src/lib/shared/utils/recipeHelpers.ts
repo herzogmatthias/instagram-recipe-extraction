@@ -75,6 +75,34 @@ export function formatMacros(macros?: Macros | null): string | null {
 }
 
 /**
+ * Format difficulty with capitalized words
+ */
+export function formatDifficulty(difficulty?: string | null): string | null {
+  if (!difficulty) return null;
+  const trimmed = difficulty.trim();
+  if (!trimmed) return null;
+
+  return trimmed
+    .split(/\s+/)
+    .map(
+      (word) =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join(" ");
+}
+
+/**
+ * Format cuisine string
+ */
+export function formatCuisine(cuisine?: string | null): string | null {
+  if (!cuisine) return null;
+  const trimmed = cuisine.trim();
+  if (!trimmed) return null;
+
+  return trimmed;
+}
+
+/**
  * Format meta pills for recipe card display
  * Returns array of formatted strings for display
  */
@@ -87,8 +115,11 @@ export function formatMetaPills(recipe: InstagramRecipePost): string[] {
   );
   if (time) pills.push(time);
 
-  const macros = formatMacros(recipe.recipe_data?.macros_per_serving);
-  if (macros) pills.push(macros);
+  const difficulty = formatDifficulty(recipe.recipe_data?.difficulty);
+  if (difficulty) pills.push(difficulty);
+
+  const cuisine = formatCuisine(recipe.recipe_data?.cuisine);
+  if (cuisine) pills.push(cuisine);
 
   return pills;
 }

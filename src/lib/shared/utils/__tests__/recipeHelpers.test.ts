@@ -150,23 +150,16 @@ describe("recipeHelpers", () => {
           total_time_min: 30,
           difficulty: "easy",
           cuisine: "Italian",
-          macros_per_serving: {
-            calories: 500,
-            protein_g: 40,
-            fat_g: 10,
-            carbs_g: 50,
-          },
           ingredients: [],
           steps: [],
         },
       } as InstagramRecipePost;
 
       const pills = formatMetaPills(recipe);
-      expect(pills).toHaveLength(4);
+      expect(pills).toHaveLength(3);
       expect(pills[0]).toBe("30 min");
       expect(pills[1]).toBe("Easy");
       expect(pills[2]).toBe("Italian");
-      expect(pills[3]).toBe("500 kcal • 40/10/50");
     });
 
     it("should handle missing recipe_data", () => {
